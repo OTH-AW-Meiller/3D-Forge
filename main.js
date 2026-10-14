@@ -564,6 +564,9 @@ function stepNav() {
 }
 setPivotMode('origin');
 
+// Start in select mode with the initial box selected
+setMode('select');
+select(boxes[0]);
 commit();
 
 // Top menu
