@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3DForge 0.1 – Box Modeler</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font: 14px system-ui, sans-serif; background: #1e2127; color: #ddd; }
+  #view { position: absolute; inset: 30px 260px 0 0; }
+  #panel { position: absolute; top: 30px; right: 0; bottom: 0; width: 260px; box-sizing: border-box; padding: 12px; background: #282c34; overflow-y: auto; }
+  h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #8b93a1; }
+  #objList { display: flex; flex-direction: column; gap: 2px; min-height: 80px; max-height: 260px; overflow-y: auto; border: 1px solid #3a3f4b; border-radius: 4px; padding: 2px; background: #22252b; }
+  #objList:empty::before { content: 'No objects'; color: #6b7280; font-size: 12px; text-align: center; padding: 28px 0; }
+  .objRow { border-radius: 3px; border: 1px solid transparent; cursor: pointer; }
+  .objRow:hover { background: #2f343e; }
+  .objRow.sel { background: #3b3f8f; border-color: #7a6cf0; }
+  .objRow input { width: 100%; box-sizing: border-box; background: transparent; color: #ddd; border: 0; padding: 4px 6px; font: inherit; cursor: pointer; outline: none; }
+  .objRow input:not([readonly]) { background: #1e2127; cursor: text; outline: 1px solid #7a6cf0; }
+  h3:first-child { margin-top: 0; }
+  button { background: #3a404b; color: #ddd; border: 1px solid #4b5262; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+  button:hover { background: #465062; }
+  button.active { background: #2f6fdb; border-color: #4c8bf5; color: #fff; }
+  .row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .grid3 { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px; align-items: center; margin-bottom: 4px; }
+  input[type=number] { width: 100%; box-sizing: border-box; background: #1e2127; color: #ddd; border: 1px solid #4b5262; border-radius: 3px; padding: 3px; }
+  input[type=color] { width: 44px; height: 26px; padding: 0; border: none; background: none; }
+  .hint { font-size: 12px; color: #8b93a1; line-height: 1.5; }
+  #nav { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; font-size: 12px; color: #8b93a1; }
+  #nav button { padding: 4px 8px; font-size: 12px; }
+  #status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #8b93a1; pointer-events: none; }
+  #toolbar { position: absolute; top: 40px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
+  #toolbar button { display: flex; flex-direction: column; align-items: center; width: 74px; padding: 5px 4px; font-size: 11px; }
+  #toolbar button i { font-style: normal; font-size: 18px; line-height: 22px; }
+  #toolbar button:disabled { opacity: .35; cursor: default; }
+  #toolbar .sep { height: 1px; background: #4b5262; margin: 2px 0; }
+  #toolbar .group { position: relative; }
+  #toolbar .group button { width: 100%; box-sizing: border-box; }
+  #toolbar .flyout { display: none; position: absolute; left: calc(100% + 10px); top: -5px; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; }
+  #toolbar .flyout::before { content: ""; position: absolute; right: 100%; top: 18px; border: 6px solid transparent; border-right-color: #4b5262; }
+  #toolbar .group.open .flyout { display: flex; }
+  #params { display: grid; grid-template-columns: 1fr 80px; gap: 4px 8px; align-items: center; margin-bottom: 8px; }
+  #menubar { position: absolute; top: 0; left: 0; right: 0; height: 30px; display: flex; align-items: stretch; background: #21252b; border-bottom: 1px solid #4b5262; z-index: 5; }
+  .menu { position: relative; }
+  .menu > button { height: 100%; background: none; border: none; border-radius: 0; padding: 0 14px; }
+  .menu.open > button, .menu > button:hover { background: #3a404b; }
+  .menu .dropdown { display: none; position: absolute; top: 100%; left: 0; min-width: 160px; flex-direction: column; background: #282c34; border: 1px solid #4b5262; border-radius: 0 0 6px 6px; padding: 4px 0; }
+  .menu.open > .dropdown { display: flex; }
+  .msep { height: 1px; background: #4b5262; margin: 4px 0; }
+  .sub { position: relative; display: flex; flex-direction: column; }
+  .subhead { display: flex; justify-content: space-between; gap: 16px; }
+  .subdrop { display: none; position: absolute; left: 100%; top: -5px; min-width: 150px; flex-direction: column; background: #282c34; border: 1px solid #4b5262; border-radius: 6px; padding: 4px 0; }
+  .sub:hover > .subdrop { display: flex; }
+  .sub:hover > .subhead { background: #3a404b; }
+  .dropdown button { display: flex; justify-content: space-between; gap: 28px; white-space: nowrap; background: none; border: none; border-radius: 0; text-align: left; padding: 6px 14px; }
+  .dropdown button:disabled { opacity: .4; cursor: default; }
+  .dropdown button:disabled:hover { background: none; color: #ddd; }
+  .dropdown button:hover { background: #2f6fdb; color: #fff; }
+  dialog.help { background: #282c34; color: #ddd; border: 1px solid #4b5262; border-radius: 8px; max-width: 520px; }
+  dialog.help::backdrop { background: #0008; }
+  .kb { opacity: .6; font-size: 11px; align-self: center; }
+  kbd { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; background: #3a404b; border: 1px solid #5c6370; border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; margin-left: 6px; color: #eee; }
+  #tip { position: fixed; z-index: 50; pointer-events: none; background: #14171c; color: #ddd; border: 1px solid #4b5262; border-radius: 6px; padding: 5px 8px; font-size: 12px; white-space: nowrap; opacity: 0; transition: opacity .12s; }
+  #tip.show { opacity: 1; }
+  #keysTable h4 { margin: 12px 0 4px; color: #e5a44a; }
+  #keysTable table { width: 100%; border-collapse: collapse; }
+  #keysTable td { padding: 2px 0; border-bottom: 1px solid #333943; }
+  #keysTable td:last-child { text-align: right; white-space: nowrap; }
+  .ver { font-size: 12px; opacity: .6; margin-top: -6px; }
+  [hidden] { display: none !important; }
+  #props.disabled { opacity: .4; pointer-events: none; }
+  #logoBtn { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 12px 0 10px; background: none; border: none; border-radius: 0; font-weight: 700; letter-spacing: .04em; color: #e8e8f0; }
+  #logoBtn svg { width: 22px; height: 22px; }
+  #logoBtn:hover { background: #3a404b; }
+  #splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(8, 9, 14, .55); transition: opacity .3s ease; }
+  #splash .card { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 340px; padding: 30px 24px 22px; box-sizing: border-box; cursor: pointer;
+    border: 1px solid #4b5262; border-radius: 14px; box-shadow: 0 20px 60px #000a;
+    background: radial-gradient(circle at 50% 30%, #2c2f6b 0%, #1a1c2e 60%, #131420 100%); transition: transform .3s ease; }
+  #splash.hide .card { transform: scale(.94); }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash[hidden] { display: none; }
+  #splash .logo { width: 110px; height: 110px; filter: drop-shadow(0 0 22px #7a6cf088); animation: float 4s ease-in-out infinite; }
+  #splash h1 { margin: 0; font-size: 38px; letter-spacing: .06em; font-weight: 800; background: linear-gradient(90deg, #8fb4ff, #b08cff 50%, #ff9a4d); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #splash p { margin: 0; color: #9aa1b5; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; }
+  #splash .go { margin-top: 12px; color: #6f7690; font-size: 12px; animation: pulse 1.8s ease-in-out infinite; }
+  #splash .spark { transform-origin: center; animation: spark 2.4s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @keyframes spark { 50% { opacity: .35; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="lgTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bcd0ff"/><stop offset="1" stop-color="#8f7cff"/></linearGradient>
+    <linearGradient id="lgLeft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b6cf0"/><stop offset="1" stop-color="#2f2f8f"/></linearGradient>
+    <linearGradient id="lgRight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b46b8"/><stop offset="1" stop-color="#191a55"/></linearGradient>
+    <linearGradient id="lgForge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#ff6a2b"/></linearGradient>
+  </defs>
+  <symbol id="logoMark" viewBox="0 0 100 100">
+    <!-- isometric cube with a chamfered, glowing front edge -->
+    <polygon points="50,6 90,28 50,50 10,28" fill="url(#lgTop)"/>
+    <polygon points="10,28 50,50 50,94 10,72" fill="url(#lgLeft)"/>
+    <polygon points="90,28 50,50 50,94 90,72" fill="url(#lgRight)"/>
+    <polygon points="50,50 56,46.7 56,91 50,94" fill="url(#lgForge)"/>
+    <polygon points="50,50 44,46.7 44,91 50,94" fill="url(#lgForge)" opacity=".85"/>
+    <polyline points="50,6 90,28 90,72 50,94 10,72 10,28 50,6" fill="none" stroke="#e9ecff" stroke-opacity=".55" stroke-width="1.6" stroke-linejoin="round"/>
+    <g class="spark" fill="#ffd27a"><path d="M84 6 l2.2 5.8 5.8 2.2 -5.8 2.2 -2.2 5.8 -2.2 -5.8 -5.8 -2.2 5.8 -2.2z"/></g>
+  </symbol>
+</svg>
+<div id="splash" hidden>
+  <div class="card">
+    <svg class="logo"><use href="#logoMark"/></svg>
+    <h1>3DForge</h1>
+    <p>Box &amp; mesh modeler</p>
+    <p class="ver">Version 0.1</p>
+    <div class="go">Click to start</div>
+  </div>
+</div>
+<div id="menubar">
+  <button id="logoBtn" title="About 3DForge"><svg><use href="#logoMark"/></svg><span>3DForge</span><small style="opacity:.55;margin-left:6px;font-size:11px">v0.1</small></button>
+  <div class="menu" id="mFile">
+    <button>File</button>
+    <div class="dropdown">
+      <div class="sub">
+        <button class="subhead">Import <span>▸</span></button>
+        <div class="subdrop">
+          <button data-imp=".json">JSON (3DForge)</button>
+          <button data-imp=".obj">OBJ</button>
+          <button data-imp=".stl">STL</button>
+          <button data-imp=".gltf,.glb">glTF / GLB</button>
+          <button data-imp=".3ds">3DS</button>
+        </div>
+      </div>
+      <div class="sub">
+        <button class="subhead">Export <span>▸</span></button>
+        <div class="subdrop">
+          <button id="exp">JSON (3DForge)</button>
+          <button data-exp="obj">OBJ</button>
+          <button data-exp="stl">STL</button>
+          <button data-exp="glb">glTF (GLB)</button>
+          <button data-exp="3ds">3DS</button>
+        </div>
+      </div>
+      <span class="msep"></span>
+      <button id="clear">Clear scene</button>
+    </div>
+  </div>
+  <div class="menu" id="mEditMenu">
+    <button>Edit</button>
+    <div class="dropdown">
+      <button id="undo" disabled>Undo</button>
+      <button id="redo" disabled>Redo</button>
+    </div>
+  </div>
+  <div class="menu" id="mHelp">
+    <button>Help</button>
+    <div class="dropdown">
+      <button id="helpBtn">Controls</button>
+      <button id="helpEditBtn">Edit mode</button>
+      <button id="helpKeysBtn">Keyboard shortcuts</button>
+    </div>
+  </div>
+</div>
+<div id="view"></div>
+<div id="toolbar">
+  <button id="mSelect" title="Select (1)"><i>↖</i>Select</button>
+  <div class="group" id="gCreate">
+    <button id="mCreate" title="Create (2–5)"><i>＋</i>Create</button>
+    <div class="flyout">
+      <button data-shape="box" class="active" title="Box (2)"><i>▣</i>Box</button>
+      <button data-shape="sphere" title="Sphere (3)"><i>●</i>Sphere</button>
+      <button data-shape="cylinder" title="Cylinder (4)"><i>⬮</i>Cylinder</button>
+      <button data-shape="tube" title="Tube (5)"><i>◎</i>Tube</button>
+    </div>
+  </div>
+  <div class="group" id="gEdit">
+    <button id="mEdit" title="Sub-object mode (Tab)"><i>✎</i>Edit</button>
+    <div class="flyout">
+      <button data-sub="vertex" class="active" title="Vertices (1)"><i>◦</i>Vertices</button>
+      <button data-sub="edge" title="Edges (2)"><i>╱</i>Edges</button>
+      <button data-sub="face" title="Faces (3)"><i>◩</i>Faces</button>
+      <span class="sep"></span>
+      <button id="subAdd" title="Add (Enter)"><i>＋</i>Add</button>
+      <button id="subDel" title="Remove (Del)"><i>－</i>Remove</button>
+      <button id="subChamfer" title="Chamfer selected edges (B)" hidden><i>◢</i>Chamfer</button>
+    </div>
+  </div>
+  <span class="sep"></span>
+  <button id="tMove" class="active" title="Move (W)"><i>✥</i>Move</button>
+  <button id="tRot" title="Rotate (E)"><i>⟳</i>Rotate</button>
+  <button id="tScale" title="Scale (R)"><i>⤡</i>Scale</button>
+  <button id="tSpace" class="active" title="Gizmo orientation: global / local (X)"><i>⌖</i><span id="spaceLbl">Local</span></button>
+  <span class="sep"></span>
+  <button id="dup" title="Duplicate (Ctrl+D)"><i>⧉</i>Duplicate</button>
+  <button id="del" title="Delete (Del)"><i>✕</i>Delete</button>
+</div>
+<div id="status"></div>
+<div id="nav">
+  <span>Pivot</span>
+  <button id="pvOrigin" title="Orbit around the origin">Origin</button>
+  <button id="pvSel" title="Orbit around the selection">Selection</button>
+  <button id="pvFocus" title="Center view on pivot (F)">⌖ Center</button>
+</div>
+<div id="panel">
+  <h3>Grid</h3>
+  <div class="row"><input type="number" id="snap" value="0" min="0" step="0.25" style="width:70px" title="0 = continuous movement (no snapping)"> units (0 = off)</div>
+
+  <div id="secCreate">
+    <h3 id="createTitle">New object</h3>
+    <div id="params"></div>
+    <div class="row">Color: <input type="color" id="ncol" value="#4c8bf5"></div>
+  </div>
+
+  <div id="secSel" hidden>
+    <h3>Selected object</h3>
+    <div class="row" id="mirrorRow" hidden>Mirror: <label><input type="checkbox" data-mirror="x"> X</label> <label><input type="checkbox" data-mirror="y"> Y</label> <label><input type="checkbox" data-mirror="z"> Z</label></div>
+    <div class="row" id="chamferRow" hidden>Chamfer width: <input type="number" id="chamferW" value="0.2" min="0.01" step="0.05" style="width:70px"></div>
+    <div id="props" class="disabled">
+      <div class="grid3">
+        <span></span><span>X</span><span>Y</span><span>Z</span>
+        <span>Pos</span><input type="number" id="px" step="0.5"><input type="number" id="py" step="0.5"><input type="number" id="pz" step="0.5">
+        <span id="lblS">Scale</span><input type="number" id="sx" min="0.01" step="0.1"><input type="number" id="sy" min="0.01" step="0.1"><input type="number" id="sz" min="0.01" step="0.1">
+        <span id="lblR">Rot °</span><input type="number" id="rx" step="15"><input type="number" id="ry" step="15"><input type="number" id="rz" step="15">
+      </div>
+      <div class="row">Color: <input type="color" id="col"></div>
+      <div class="row" id="faceColRow" hidden>Face color: <input type="color" id="fcol"> <button id="fcolReset" title="Use the object color for the selected faces">Reset</button></div>
+    </div>
+  </div>
+
+  <h3>Objects</h3>
+  <div id="objList"></div>
+
+  <input type="file" id="file" accept=".json" hidden>
+
+</div>
+
+<dialog id="helpDlg" class="help">
+  <h3>Controls</h3>
+  <div class="hint">
+    <b>View</b><br>
+    Left mouse drag: orbit · Right mouse / Shift+drag: pan · Wheel: zoom<br>
+    F: center view on pivot · Pivot buttons (top right): rotate around origin or selection<br>
+    <b>Objects</b><br>
+    <b>Create</b> (toolbar): pick Box / Sphere / Cylinder / Tube, set its parameters in the panel, click the ground or an object face to place it. The last created object is selected.<br>
+    <b>Select</b>: click an object in the view or in the object list (double-click a list entry to rename it). Use the gizmo to move / rotate / scale; the grid field sets the snap step (0 = continuous).<br>
+    Del: delete · Ctrl+D: duplicate · Esc: deselect · Ctrl+Z / Ctrl+Shift+Z: undo / redo<br>
+    <b>Shortcuts</b><br>
+    1: Select · 2–5: Box / Sphere / Cylinder / Tube · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
+    <b>File menu</b>: import / export JSON (lossless), 3DS, OBJ, STL, glTF/GLB.
+  </div>
+  <div class="row" style="margin-top:12px"><button data-close>Close</button></div>
+</dialog>
+<dialog id="helpEditDlg" class="help">
+  <h3>Edit mode</h3>
+  <div class="hint">
+    <b>Enter / leave:</b> select an object, press Tab or click “Edit”. Esc clears the selection, a second Esc (or Tab) leaves edit mode.<br>
+    <b>Sub-objects:</b> 1 / 2 / 3 or the flyout: Vertices / Edges / Faces. Click selects, Shift+click toggles, A selects all. The gizmo moves, rotates or scales the selection.<br>
+    <b>Vertices – Add:</b> click a face or edge to insert a point (Enter toggles insert mode).<br>
+    <b>Edges – Add:</b> select exactly two points of the same face; Enter connects them with a new edge and splits the face.<br>
+    <b>Faces – Add:</b> Enter extrudes the selected faces.<br>
+    <b>Remove (Del):</b> deletes selected vertices, edges (merges the faces) or faces. Disabled while nothing is selected.<br>
+    <b>Chamfer (B):</b> bevels the selected edges; the width is set in the panel. Only edges between two faces are chamfered; faces with holes or interior points are rejected.<br>
+    <b>Mirror X / Y / Z</b> (panel): repeats every edit on the opposite side of the object's local plane. Several axes can be combined. With Faces – Add only the edited side stays selected.<br>
+    <b>Face colour:</b> with faces selected, the panel shows a colour field for just those faces (Reset restores the object colour).<br>
+    Selected edges are drawn as thick orange lines.
+  </div>
+  <div class="row" style="margin-top:12px"><button data-close>Close</button></div>
+</dialog>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<dialog id="helpKeysDlg" class="help" style="max-height:80vh">
+  <h3 style="margin-top:0">Keyboard shortcuts</h3>
+  <div id="keysTable"></div>
+  <p class="hint">Ctrl also means Cmd on macOS. Hover over any button to see its shortcut. Other import/export formats (OBJ, STL, GLB, 3DS) are reachable via the File menu only.</p>
+  <button data-close>Close</button>
+</dialog>
+<script type="module" src="splash.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>
