@@ -175,6 +175,12 @@
       <div class="hint">Each copy applies the offset, rotation and scale factor once more than the previous one.</div>
       <div class="row"><button id="arrayApply">Apply</button> <span class="hint" id="arrayMsg"></span></div>
     </div>
+    <div id="mergeRow" hidden>
+      <div class="row"><b>Merge</b></div>
+      <div class="row"><label title="Combine the objects with a boolean union instead of just joining the meshes"><input type="checkbox" id="mergeUnion"> Boolean union</label></div>
+      <div class="hint">Off: the objects are joined into one mesh unchanged. On: overlapping volumes are fused and interior geometry is removed (needs closed meshes).</div>
+      <div class="row"><button id="mergeApply">Apply</button> <span class="hint" id="mergeMsg"></span></div>
+    </div>
     <div id="remeshRow" hidden>
       <div class="row"><b>Remesh</b></div>
       <div class="row">Fineness: <input type="number" id="rmFine" value="10" min="2" max="200" step="1" style="width:70px"></div>

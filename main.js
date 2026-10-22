@@ -377,7 +377,10 @@ function updateToolbar() {
   $('bool').disabled = !canBool();
   $('bool').classList.toggle('active', boolOpen);
   $('boolRow').hidden = !boolOpen;
+  if (!canMerge()) mergeOpen = false;
   $('mergeBtn').disabled = !canMerge();
+  $('mergeBtn').classList.toggle('active', mergeOpen);
+  $('mergeRow').hidden = !mergeOpen;
   if (!canSmooth()) remeshOpen = false;
   $('remeshBtn').disabled = !canSmooth();
   $('remeshBtn').classList.toggle('active', remeshOpen);
@@ -611,6 +614,14 @@ function applyBool() {
   let pos;
   try { pos = booleanOp(worldPositions(A), worldPositions(B), op); } catch (err) { msg('Operation failed (mesh too complex)'); return; }
   if (!pos.length) { msg('Result is empty'); return; }
+  finishBoolean(pos, [A, B], op === 'union' ? 'Union' : 'Difference');
+  boolOpen = false;
+  msg('');
+  commit();
+  updateToolbar();
+}
+// Centre the boolean result, group its triangles into faces and replace the source objects with it
+function finishBoolean(pos, parts, name) {
   const min = new THREE.Vector3(Infinity, Infinity, Infinity), max = min.clone().negate();
   for (let i = 0; i < pos.length; i += 3) for (let k = 0; k < 3; k++) { min.setComponent(k, Math.min(min.getComponent(k), pos[i + k])); max.setComponent(k, Math.max(max.getComponent(k), pos[i + k])); }
   const c = min.add(max).multiplyScalar(0.5);
@@ -641,19 +652,34 @@ function applyBool() {
     }
   }
   for (let t = 0; t < nT; t++) faceOf[t] = find(faceOf[t]);
-  const color = baseHex(A);
+  const color = baseHex(parts[0]);
   select(null);
-  for (const m of [A, B]) { boxes.splice(boxes.indexOf(m), 1); disposeMesh(m); }
-  select(addBox({ position: c, color, positions: pos, faces: faceOf, name: op === 'union' ? 'Union' : 'Difference' }));
-  boolOpen = false;
+  for (const m of parts) { boxes.splice(boxes.indexOf(m), 1); disposeMesh(m); }
+  select(addBox({ position: c, color, positions: pos, faces: faceOf, name }));
+}
+// Merge: combine all selected objects into one mesh (world-space geometry, face colours kept)
+const canMerge = () => mode === 'select' && selection.length > 1;
+let mergeOpen = false;
+function mergeUnion() {
+  const parts = selection.slice();
+  const msg = t => { $('mergeMsg').textContent = t; };
+  msg('Working…');
+  let pos;
+  try {
+    pos = worldPositions(parts[0]);
+    for (let i = 1; i < parts.length && pos.length; i++) pos = booleanOp(pos, worldPositions(parts[i]), 'union');
+  } catch (err) { msg('Operation failed (mesh too complex)'); return; }
+  if (!pos.length) { msg('Result is empty'); return; }
+  finishBoolean(pos, parts, 'Union');
+  mergeOpen = false;
   msg('');
   commit();
   updateToolbar();
 }
-// Merge: combine all selected objects into one mesh (world-space geometry, face colours kept)
-const canMerge = () => mode === 'select' && selection.length > 1;
 function mergeSelected() {
   if (!canMerge()) return;
+  if ($('mergeUnion').checked) { mergeUnion(); return; }
+  mergeOpen = false;
   const parts = selection.slice(), all = [], faces = [], faceColors = new Map();
   const baseHexes = new Set(parts.map(baseHex));
   const needColors = baseHexes.size > 1 || parts.some(p => p.userData.model?.faceColors.size);
@@ -683,7 +709,8 @@ function mergeSelected() {
   commit();
   updateToolbar();
 }
-$('mergeBtn').onclick = mergeSelected;
+$('mergeBtn').onclick = () => { if (!canMerge()) return; mergeOpen = !mergeOpen; updateToolbar(); };
+$('mergeApply').onclick = mergeSelected;
 // Remesh: rebuild each selected mesh with evenly sized triangles (edge length = longest side / fineness)
 let remeshOpen = false;
 function remeshObject(mesh, fineness) {
