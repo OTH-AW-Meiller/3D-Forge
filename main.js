@@ -215,6 +215,13 @@ selFrame.material.depthTest = false;
 selFrame.renderOrder = 10;
 selFrame.visible = false;
 scene.add(selFrame);
+let modifierHeld = false;
+function syncGizmoForModifier(e) {
+  if (e) modifierHeld = !!(e.shiftKey || e.ctrlKey || e.metaKey);
+  const hide = !gizmo.object || (mode === 'edit' && modifierHeld && !gizmo.dragging);
+  gizmo.enabled = !hide;
+  gizmo.visible = !hide;
+}
 function updateSelFrame() {
   const show = selection.length > 0 && mode === 'select';
   selFrame.visible = show;
@@ -230,6 +237,7 @@ function attachGizmo() {
     gizmo.attach(groupPivot);
   } else if (selected) gizmo.attach(selected);
   else gizmo.detach();
+  syncGizmoForModifier();
 }
 gizmo.addEventListener('dragging-changed', e => {
   if (editor.active || gizmo.object !== groupPivot) return;
@@ -608,15 +616,12 @@ $('boolApply').onclick = applyBool;
 $('del').onclick = deleteSelected;
 $('dup').onclick = duplicateSelected;
 
-// While Shift/Ctrl/Cmd is held in edit mode the gizmo is hidden so it cannot get in the way of multi-selection
-const syncGizmoForModifier = e => {
-  const hide = mode === 'edit' && !!(e.shiftKey || e.ctrlKey || e.metaKey) && !gizmo.dragging;
-  gizmo.enabled = !hide;
-  gizmo.visible = !hide;
-};
 window.addEventListener('keydown', syncGizmoForModifier);
 window.addEventListener('keyup', syncGizmoForModifier);
-window.addEventListener('blur', () => syncGizmoForModifier({}));
+window.addEventListener('blur', () => {
+  modifierHeld = false;
+  syncGizmoForModifier();
+});
 // Tell clicks from drags so orbiting does not place anything
 let down = null;
 const dom = renderer.domElement;
