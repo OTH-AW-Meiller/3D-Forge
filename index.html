@@ -17,6 +17,10 @@
   .objRow input { width: 100%; box-sizing: border-box; background: transparent; color: #ddd; border: 0; padding: 4px 6px; font: inherit; cursor: pointer; outline: none; }
   .objRow input:not([readonly]) { background: #1e2127; cursor: text; outline: 1px solid #7a6cf0; }
   h3:first-child { margin-top: 0; }
+  /* separators between the option groups */
+  #panel h3 { margin-top: 12px; padding-top: 12px; border-top: 1px solid #3d4350; }
+  #panel > h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  #mirrorRow, #chamferRow, #boolRow, #smoothRow { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #3d4350; }
   button { background: #3a404b; color: #ddd; border: 1px solid #4b5262; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
   button:hover { background: #465062; }
   button.active { background: #2f6fdb; border-color: #4c8bf5; color: #fff; }
