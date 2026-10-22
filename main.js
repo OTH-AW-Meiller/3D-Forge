@@ -1046,10 +1046,65 @@ resize();
 // Initial scene
 addBox({ position: new THREE.Vector3(0, 0.5, 0), size: new THREE.Vector3(1, 1, 1), color: '#4c8bf5' });
 
-renderer.setAnimationLoop(() => {
+// Fly navigation: hold the right mouse button, then W/S forward/back, A/D left/right, E/Q up/down (Shift = faster), drag to look around
+const flyKeys = new Set();
+let flying = false, flyLast = 0;
+const FLY_KEYS = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r', KeyE: 'u', KeyQ: 'd' };
+dom.addEventListener('contextmenu', e => e.preventDefault());
+dom.addEventListener('pointerdown', e => {
+  if (e.button !== 2) return;
+  flying = true;
+  dom.setPointerCapture(e.pointerId);
+  down = null;
+});
+const flyStop = () => { flying = false; flyKeys.clear(); };
+dom.addEventListener('pointerup', e => { if (e.button === 2) flyStop(); });
+dom.addEventListener('pointercancel', flyStop);
+window.addEventListener('blur', flyStop);
+dom.addEventListener('pointermove', e => {
+  if (!flying || !(e.buttons & 2)) return;
+  const dist = camera.position.distanceTo(orbit.target);
+  const view = orbit.target.clone().sub(camera.position);
+  const sph = new THREE.Spherical().setFromVector3(view);
+  sph.theta -= e.movementX * 0.005;
+  sph.phi = THREE.MathUtils.clamp(sph.phi - e.movementY * 0.005, 0.05, Math.PI - 0.05);
+  orbit.target.copy(camera.position).add(new THREE.Vector3().setFromSpherical(sph).setLength(dist));
+});
+window.addEventListener('keydown', e => {
+  if (!flying || !FLY_KEYS[e.code] || e.ctrlKey || e.metaKey || e.altKey) return;
+  flyKeys.add(FLY_KEYS[e.code]);
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
+window.addEventListener('keyup', e => { if (FLY_KEYS[e.code]) flyKeys.delete(FLY_KEYS[e.code]); }, true);
+function stepFly(now) {
+  const dt = Math.min(0.1, (now - flyLast) / 1000 || 0);
+  flyLast = now;
+  if (!flying || !flyKeys.size) return;
+  const dir = new THREE.Vector3(), fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  const right = new THREE.Vector3().crossVectors(fwd, camera.up).normalize();
+  if (flyKeys.has('f')) dir.add(fwd);
+  if (flyKeys.has('b')) dir.sub(fwd);
+  if (flyKeys.has('r')) dir.add(right);
+  if (flyKeys.has('l')) dir.sub(right);
+  if (flyKeys.has('u')) dir.y += 1;
+  if (flyKeys.has('d')) dir.y -= 1;
+  if (!dir.lengthSq()) return;
+  const speed = 4 * (shiftHeld ? 3 : 1);
+  dir.normalize().multiplyScalar(speed * dt);
+  camera.position.add(dir);
+  orbit.target.add(dir);
+}
+let shiftHeld = false;
+window.addEventListener('keydown', e => { shiftHeld = e.shiftKey; }, true);
+window.addEventListener('keyup', e => { shiftHeld = e.shiftKey; }, true);
+
+renderer.setAnimationLoop(now => {
   trackSelection();
   updateSelFrame();
   stepNav();
+  stepFly(now);
   orbit.update();
   $('status').textContent = `${boxes.length} objects`;
   renderer.render(scene, camera);
