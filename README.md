@@ -27,6 +27,8 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 
 ### Object mode
 - Select, move, rotate and scale with a gizmo (global or local orientation)
+- A yellow frame shows the extent of the selected object(s)
+- Multi-selection: `Shift`/`Ctrl`/`Cmd`+click in the view or in the object list toggles objects, `Ctrl+A` selects all; the gizmo transforms the whole selection, and duplicate, delete and colour apply to all selected objects
 - Numeric position / scale / rotation / colour fields in the side panel
 - Duplicate and delete objects
 - Scrollable object list with rename (double-click) and selection

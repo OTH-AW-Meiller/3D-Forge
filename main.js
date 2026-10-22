@@ -24,7 +24,8 @@ gizmo.addEventListener('dragging-changed', e => orbit.enabled = !e.value);
 gizmo.addEventListener('objectChange', () => { if (editor.active) return; applySnapToSelection(); syncPanel(); });
 
 const boxes = [];
-let selected = null;
+let selected = null; // primary object (last selected)
+let selection = []; // all selected objects
 let mode = 'place';
 let shape = 'box';
 
@@ -134,13 +135,52 @@ function placementAt(e) {
   return { position: p, size };
 }
 
-function select(mesh) {
-  if (selected) selected.material.emissive.setHex(0x000000);
-  selected = mesh;
-  if (mesh) {
-    mesh.material.emissive.setHex(0x222222);
-    gizmo.attach(mesh);
-  } else gizmo.detach();
+// Several selected objects are moved together by temporarily parenting them to a group at the selection centre
+const groupPivot = new THREE.Object3D();
+scene.add(groupPivot);
+function selectionBox() {
+  const b = new THREE.Box3();
+  selection.forEach(m => b.expandByObject(m));
+  return b;
+}
+// Frame around the selected object(s)
+const selFrame = new THREE.Box3Helper(new THREE.Box3(), 0xffc233);
+selFrame.material.depthTest = false;
+selFrame.renderOrder = 10;
+selFrame.visible = false;
+scene.add(selFrame);
+function updateSelFrame() {
+  const show = selection.length > 0 && mode === 'select';
+  selFrame.visible = show;
+  if (!show) return;
+  selFrame.box.copy(selectionBox()).expandByScalar(0.02);
+}
+function attachGizmo() {
+  if (selection.length > 1) {
+    groupPivot.position.copy(selectionBox().getCenter(new THREE.Vector3()));
+    groupPivot.quaternion.identity();
+    groupPivot.scale.set(1, 1, 1);
+    groupPivot.updateMatrixWorld(true);
+    gizmo.attach(groupPivot);
+  } else if (selected) gizmo.attach(selected);
+  else gizmo.detach();
+}
+gizmo.addEventListener('dragging-changed', e => {
+  if (editor.active || gizmo.object !== groupPivot) return;
+  if (e.value) selection.forEach(m => groupPivot.attach(m));
+  else { selection.forEach(m => scene.attach(m)); attachGizmo(); }
+});
+
+// additive = toggle the object in the current selection
+function select(mesh, additive = false) {
+  selection.forEach(m => m.material.emissive.setHex(0x000000));
+  if (additive && mesh) {
+    const i = selection.indexOf(mesh);
+    if (i >= 0) selection.splice(i, 1); else selection.push(mesh);
+  } else selection = mesh ? [mesh] : [];
+  selected = selection[selection.length - 1] ?? null;
+  selection.forEach(m => m.material.emissive.setHex(0x222222));
+  attachGizmo();
   updateToolbar();
   syncPanel();
 }
@@ -158,15 +198,15 @@ function syncPanel() {
 
 function applySnapToSelection() {
   if (!selected) return;
-  const m = selected;
+  const m = gizmo.object;
   if (gizmo.mode === 'translate') m.position.set(snapV(m.position.x), snapV(m.position.y), snapV(m.position.z));
 }
 
 function setMode(m) {
-  if (m === 'edit' && !selected) return;
+  if (m === 'edit' && selection.length !== 1) return;
   if (mode === 'edit' && m !== 'edit') {
     editor.exit();
-    if (selected) gizmo.attach(selected);
+    attachGizmo();
   }
   mode = m;
   if (m === 'edit') { gizmo.detach(); editor.enter(selected); }
@@ -217,7 +257,7 @@ function updateToolbar() {
   const editing = mode === 'edit';
   for (const id of ['tMove', 'tRot', 'tScale']) $(id).disabled = !selected;
   for (const id of ['dup', 'del']) $(id).disabled = !selected || editing;
-  $('mEdit').disabled = !selected;
+  $('mEdit').disabled = selection.length !== 1;
   $('mEdit').classList.toggle('active', editing);
   $('gEdit').classList.toggle('open', editing);
   document.querySelectorAll('[data-sub]').forEach(b => b.disabled = !editing);
@@ -231,6 +271,7 @@ function updateToolbar() {
   $('subAdd').dataset.tip = ADD_TITLES[editor.kind];
   $('subDel').dataset.tip = DEL_TITLES[editor.kind];
   $('props').classList.toggle('disabled', !selected);
+  $('props').classList.toggle('multi', selection.length > 1 && !editing);
   if (!editing) { $('lblS').textContent = 'Scale'; $('lblR').textContent = 'Rot °'; }
 }
 
@@ -291,7 +332,7 @@ function syncEditPanel(force) {
 }
 for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz']) {
   $(id).addEventListener('input', () => {
-    if (!selected || editor.active) return;
+    if (!selected || editor.active || selection.length > 1) return;
     const v = id => +$(id).value || 0;
     const r = THREE.MathUtils.degToRad;
     selected.position.set(v('px'), v('py'), v('pz'));
@@ -301,8 +342,7 @@ for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz']) {
 }
 $('col').addEventListener('input', () => {
   if (!selected) return;
-  selected.userData.baseColor.set($('col').value);
-  applyColors(selected);
+  for (const m of selection) { m.userData.baseColor.set($('col').value); applyColors(m); }
 });
 $('ncol').addEventListener('input', () => ghost.material.color.set($('ncol').value));
 
@@ -314,19 +354,18 @@ function disposeMesh(m) {
 }
 function deleteSelected() {
   if (!selected || mode === 'edit') return;
-  const m = selected;
+  const doomed = selection.slice();
   select(null);
-  boxes.splice(boxes.indexOf(m), 1);
-  disposeMesh(m);
+  for (const m of doomed) { boxes.splice(boxes.indexOf(m), 1); disposeMesh(m); }
   commit();
 }
 function duplicateSelected() {
   if (!selected || mode === 'edit') return;
-  const s = selected;
-  const c = addBox({ position: s.position.clone().add(new THREE.Vector3(+$('snap').value || 0.5, 0, 0)),
+  const copies = selection.map(s => addBox({ position: s.position.clone().add(new THREE.Vector3(+$('snap').value || 0.5, 0, 0)),
     size: s.scale.clone(), color: s.userData.baseColor.clone(), rotation: [s.rotation.x, s.rotation.y, s.rotation.z], type: s.userData.type, params: { ...s.userData.params },
-    positions: s.userData.model?.positions, faces: s.userData.model?.faceOfTri, faceColors: s.userData.model?.faceColors, name: s.userData.name });
-  select(c);
+    positions: s.userData.model?.positions, faces: s.userData.model?.faceOfTri, faceColors: s.userData.model?.faceColors, name: s.userData.name }));
+  select(null);
+  copies.forEach(c => select(c, true));
   commit();
 }
 $('del').onclick = deleteSelected;
@@ -360,7 +399,8 @@ dom.addEventListener('pointerup', e => {
   } else {
     setPointer(e);
     const hit = raycaster.intersectObjects(boxes, false)[0];
-    select(hit ? hit.object : null);
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    if (hit || !additive) select(hit ? hit.object : null, additive);
   }
 });
 
@@ -382,6 +422,7 @@ setupShortcuts({
   dup: duplicateSelected,
   del: deleteSelected,
   deselect: () => select(null),
+  selectAllObjects: () => { if (mode === 'place') setMode('select'); select(null); boxes.forEach(b => select(b, true)); },
   prev: () => stepSelection(-1),
   next: () => stepSelection(1),
   rename: () => { const inp = listEl.querySelector('.sel input'); if (!inp) return false; inp.readOnly = false; inp.focus(); inp.select(); },
@@ -424,6 +465,7 @@ addBox({ position: new THREE.Vector3(0, 0.5, 0), size: new THREE.Vector3(1, 1, 1
 
 renderer.setAnimationLoop(() => {
   trackSelection();
+  updateSelFrame();
   stepNav();
   orbit.update();
   $('status').textContent = `${boxes.length} objects`;
@@ -460,12 +502,12 @@ function commit() {
 }
 function restore(json) {
   const wasEdit = mode === 'edit';
-  const idx = boxes.indexOf(selected);
+  const idx = selection.map(m => boxes.indexOf(m));
   clearAll();
   for (const b of JSON.parse(json)) addBox({ position: new THREE.Vector3(...b.position), size: new THREE.Vector3(...b.size),
     color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name });
-  if (mode !== 'place' && boxes[idx]) {
-    select(boxes[idx]);
+  if (mode !== 'place') {
+    idx.filter(i => boxes[i]).forEach(i => select(boxes[i], true));
     if (wasEdit) setMode('edit');
   }
   updateToolbar();
@@ -497,7 +539,7 @@ let navKey = '';
 function selectionCenter() {
   if (!selected) return null;
   if (editor.active && editor.hasSelection() && editor.gizmo.object === editor.pivot) return editor.pivot.position.clone();
-  return new THREE.Box3().setFromObject(selected).getCenter(new THREE.Vector3());
+  return selectionBox().getCenter(new THREE.Vector3());
 }
 function pivotPoint() { return pivotMode === 'origin' ? new THREE.Vector3(0, 0, 0) : selectionCenter(); }
 setZoomCenter(() => pivotPoint());
@@ -528,23 +570,23 @@ let listKey = '';
 function syncList() {
   const key = boxes.map(b => b.userData.name).join('\n');
   if (key === listKey && listEl.children.length === boxes.length) {
-    boxes.forEach((b, i) => listEl.children[i].classList.toggle('sel', b === selected));
+    boxes.forEach((b, i) => listEl.children[i].classList.toggle('sel', selection.includes(b)));
     listEl.querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
     return;
   }
-  if (listEl.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  if (listEl.contains(document.activeElement) && document.activeElement.tagName === 'INPUT' && !document.activeElement.readOnly) return;
   listKey = key;
   const top = listEl.scrollTop;
   listEl.replaceChildren(...boxes.map(m => {
     const row = document.createElement('div');
-    row.className = 'objRow' + (m === selected ? ' sel' : '');
+    row.className = 'objRow' + (selection.includes(m) ? ' sel' : '');
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.value = m.userData.name;
     inp.spellcheck = false;
     inp.title = 'Click to select, double-click to rename';
     inp.readOnly = true;
-    row.onclick = () => { if (mode === 'edit') return; if (mode === 'place') setMode('select'); select(m); };
+    row.onclick = e => { if (mode === 'edit') return; if (mode === 'place') setMode('select'); select(m, e.shiftKey || e.ctrlKey || e.metaKey); };
     inp.ondblclick = () => { inp.readOnly = false; inp.focus(); inp.select(); };
     inp.onkeydown = e => {
       if (e.key === 'Enter') inp.blur();
@@ -555,7 +597,6 @@ function syncList() {
       const v = inp.value.trim();
       if (v && v !== m.userData.name) { m.userData.name = ''; m.userData.name = uniqueName(v); commit(); }
       inp.value = m.userData.name;
-      listKey = '';
     };
     row.append(inp);
     return row;
@@ -567,7 +608,7 @@ function trackSelection() {
   syncList();
   syncEditPanel();
   if (pivotMode !== 'selection' || gizmo.dragging) return;
-  let key = selected ? selected.uuid : '';
+  let key = selection.map(m => m.uuid).join(',');
   if (editor.active) key += '|' + editor.kind + [...editor.selV, ...editor.selE, ...editor.selF].join(',');
   if (key === navKey) return;
   navKey = key;

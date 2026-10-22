@@ -12,8 +12,9 @@ export const SHORTCUTS = [
   // Edit
   { id: 'undo', group: 'Edit', label: 'Undo', keys: ['Ctrl+Z'], el: '#undo' },
   { id: 'redo', group: 'Edit', label: 'Redo', keys: ['Ctrl+Shift+Z', 'Ctrl+Y'], el: '#redo' },
-  { id: 'dup', group: 'Edit', label: 'Duplicate object', keys: ['Ctrl+D'], when: 'obj', el: '#dup' },
-  { id: 'del', group: 'Edit', label: 'Delete object', keys: ['Del', 'Backspace'], when: 'obj', el: '#del' },
+  { id: 'dup', group: 'Edit', label: 'Duplicate selected objects', keys: ['Ctrl+D'], when: 'obj', el: '#dup' },
+  { id: 'del', group: 'Edit', label: 'Delete selected objects', keys: ['Del', 'Backspace'], when: 'obj', el: '#del' },
+  { id: 'selectAllObjects', group: 'Edit', label: 'Select all objects', keys: ['Ctrl+A'], when: 'obj' },
   { id: 'deselect', group: 'Edit', label: 'Deselect', keys: ['Esc'], when: 'obj' },
   { id: 'prev', group: 'Edit', label: 'Select previous object', keys: ['Up'], when: 'obj' },
   { id: 'next', group: 'Edit', label: 'Select next object', keys: ['Down'], when: 'obj' },
