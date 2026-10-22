@@ -72,6 +72,8 @@
   .dropdown button:disabled { opacity: .4; cursor: default; }
   .dropdown button:disabled:hover { background: none; color: #ddd; }
   .dropdown button:hover { background: #2f6fdb; color: #fff; }
+  #mViewport .dropdown button[data-shading]::after { content: "✓"; visibility: hidden; }
+  #mViewport .dropdown button[data-shading].active::after { visibility: visible; }
   dialog.help { background: #282c34; color: #ddd; border: 1px solid #4b5262; border-radius: 8px; max-width: 520px; }
   dialog.help::backdrop { background: #0008; }
   .kb { opacity: .6; font-size: 11px; align-self: center; }
