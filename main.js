@@ -207,14 +207,22 @@ function applySnapToSelection() {
   if (gizmo.mode === 'translate') m.position.set(snapV(m.position.x), snapV(m.position.y), snapV(m.position.z));
 }
 
+let pivotBeforeEdit = null;
 function setMode(m) {
   if (m === 'edit' && selection.length !== 1) return;
   if (mode === 'edit' && m !== 'edit') {
     editor.exit();
     attachGizmo();
+    if (pivotBeforeEdit) setPivotMode(pivotBeforeEdit);
+    pivotBeforeEdit = null;
   }
   mode = m;
-  if (m === 'edit') { gizmo.detach(); editor.enter(selected); }
+  if (m === 'edit') {
+    gizmo.detach();
+    editor.enter(selected);
+    pivotBeforeEdit = pivotMode;
+    setPivotMode('selection');
+  }
   $('mSelect').classList.toggle('active', m === 'select');
   $('mCreate').classList.toggle('active', m === 'place');
   $('secCreate').hidden = m !== 'place';
@@ -341,7 +349,7 @@ function syncEditPanel(force) {
   if (!has) return;
   const a = document.activeElement;
   if (!force && a && a.closest && a.closest('#props') && a.tagName === 'INPUT') return;
-  const p = editor.pivot.position;
+  const p = editor.center;
   [['px', p.x], ['py', p.y], ['pz', p.z], ['sx', 1], ['sy', 1], ['sz', 1], ['rx', 0], ['ry', 0], ['rz', 0]]
     .forEach(([id, v]) => $(id).value = round(v));
 }
@@ -707,11 +715,12 @@ gizmo.addEventListener('dragging-changed', e => { if (!e.value) commit(); });
 for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz', 'col']) $(id).addEventListener('change', e => { if (!e.scrub) commit(); });
 // 3D navigation: pivot = world origin or selection
 let pivotMode = 'origin';
+editor.pivotAtOrigin = true;
 let navGoal = null;
 let navKey = '';
 function selectionCenter() {
   if (!selected) return null;
-  if (editor.active && editor.hasSelection() && editor.gizmo.object === editor.pivot) return editor.pivot.position.clone();
+  if (editor.active && editor.hasSelection() && editor.gizmo.object === editor.pivot) return editor.center.clone();
   return selectionBox().getCenter(new THREE.Vector3());
 }
 function pivotPoint() { return pivotMode === 'origin' ? new THREE.Vector3(0, 0, 0) : selectionCenter(); }
@@ -720,6 +729,8 @@ setRotateBlocked(() => !!gizmo.axis || gizmo.dragging);
 function focusPivot() { const p = pivotPoint(); if (p) navGoal = p; }
 function setPivotMode(p) {
   pivotMode = p;
+  editor.pivotAtOrigin = p === 'origin';
+  if (editor.active) editor.updatePivot();
   $('pvOrigin').classList.toggle('active', p === 'origin');
   $('pvSel').classList.toggle('active', p === 'selection');
   navKey = '';

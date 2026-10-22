@@ -25,6 +25,8 @@ export class SubObjectEditor {
     this.kind = 'vertex';
     this.mesh = null;
     this.pivot = new THREE.Object3D();
+    this.center = new THREE.Vector3();
+    this.pivotAtOrigin = false;
     scene.add(this.pivot);
     this.raycaster = new THREE.Raycaster();
     this.selV = new Set();
@@ -249,8 +251,11 @@ export class SubObjectEditor {
     const c = new THREE.Vector3(), p = new THREE.Vector3();
     vids.forEach(i => c.add(p.fromArray(this.model.verts, 3 * i)));
     c.divideScalar(vids.size).applyMatrix4(this.mesh.matrixWorld);
+    this.center.copy(c);
+    // Pivot "Origin": the gizmo stays at the selection centre but uses world axes
     this.pivot.position.copy(c);
-    if (this.gizmo.space === 'local') this.selectionQuaternion(this.pivot.quaternion);
+    if (this.pivotAtOrigin) this.pivot.quaternion.identity();
+    else if (this.gizmo.space === 'local') this.selectionQuaternion(this.pivot.quaternion);
     else this.pivot.quaternion.identity();
     this.pivot.scale.set(1, 1, 1);
     this.pivot.updateMatrixWorld(true);
