@@ -17,7 +17,7 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 ## Features
 
 ### Scene & navigation
-- Rotatable 3D view (orbit), pan and zoom, with a ground grid and axes
+- Rotatable 3D view (orbit), pan and zoom (mouse wheel or `Alt`+left drag, zooming and orbiting around the selected pivot), with a ground grid and axes
 - Pivot options: orbit around the origin or the current selection; "Center" focuses the view on the pivot, "Home" (`Home`) resets the view to the initial position
 - Optional grid snapping (units configurable, 0 = off)
 

@@ -12,7 +12,7 @@ import { SHAPES, defaultParams, normalizeParams, buildShape } from './shapes.js'
 const $ = id => document.getElementById(id);
 const container = $('view');
 
-const { scene, camera, renderer, orbit, ground, resize } = createStage(container);
+const { scene, camera, renderer, orbit, ground, resize, setZoomCenter, setRotateBlocked } = createStage(container);
 
 const gizmo = new TransformControls(camera, renderer.domElement);
 gizmo.setSpace('local');
@@ -500,6 +500,8 @@ function selectionCenter() {
   return new THREE.Box3().setFromObject(selected).getCenter(new THREE.Vector3());
 }
 function pivotPoint() { return pivotMode === 'origin' ? new THREE.Vector3(0, 0, 0) : selectionCenter(); }
+setZoomCenter(() => pivotPoint());
+setRotateBlocked(() => !!gizmo.axis || gizmo.dragging);
 function focusPivot() { const p = pivotPoint(); if (p) navGoal = p; }
 function setPivotMode(p) {
   pivotMode = p;
