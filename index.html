@@ -32,6 +32,9 @@
   #navWrap { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 6px; z-index: 2; }
   #nav, #navHome { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; font-size: 12px; color: #8b93a1; }
   #nav button, #navHome button { padding: 4px 8px; font-size: 12px; }
+  #navTools { position: absolute; top: 82px; right: 270px; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 2; touch-action: none; }
+  #navGizmo { cursor: grab; }
+  #navTools button { width: 36px; height: 36px; padding: 0; font-size: 16px; border-radius: 50%; cursor: grab; touch-action: none; }
   #status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #8b93a1; pointer-events: none; }
   #toolbar { position: absolute; top: 40px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
   #toolbar button { display: flex; flex-direction: column; align-items: center; width: 74px; padding: 5px 4px; font-size: 11px; }
@@ -215,6 +218,11 @@
   <button id="pvFocus" title="Center view on pivot (F)">⌖ Center</button>
 </div>
 </div>
+<div id="navTools">
+  <canvas id="navGizmo" title="Click an axis to snap the view, drag to orbit"></canvas>
+  <button id="navZoom" title="Drag up/down to zoom">🔍</button>
+  <button id="navPan" title="Drag to pan the view">✋</button>
+</div>
 <div id="panel">
   <h3>Grid</h3>
   <div class="row"><input type="number" id="snap" value="0" min="0" step="0.25" style="width:70px" title="0 = continuous movement (no snapping)"> units (0 = off)</div>
@@ -265,7 +273,7 @@
   <h3>Controls</h3>
   <div class="hint">
     <b>View</b><br>
-    Left mouse drag: orbit around the pivot · Right mouse / Shift+drag: pan · Wheel or Alt+drag (up/down): zoom<br>
+    Middle mouse drag: orbit around the pivot · Shift+middle drag: pan · Ctrl+middle drag or wheel: zoom<br>
     F: center view on pivot · Pivot buttons (top right): rotate around origin or selection<br>
     <b>Objects</b><br>
     <b>Create</b> (toolbar): pick Box / Sphere / Cylinder / Tube, set its parameters in the panel, click the ground or an object face to place it. The last created object is selected.<br>

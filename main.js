@@ -11,11 +11,13 @@ import { nonIndexedPositions } from './model.js';
 import { setupIO } from './io.js';
 import { setupShortcuts } from './shortcuts.js';
 import { SHAPES, defaultParams, normalizeParams, buildShape } from './shapes.js';
+import { setupNavGizmo } from './navgizmo.js';
+import { setupNumberScrub } from './numscrub.js';
 
 const $ = id => document.getElementById(id);
 const container = $('view');
 
-const { scene, camera, renderer, orbit, ground, resize, setZoomCenter, setRotateBlocked } = createStage(container);
+const { scene, camera, renderer, orbit, ground, resize, setZoomCenter, setRotateBlocked, navigate } = createStage(container);
 
 const gizmo = new TransformControls(camera, renderer.domElement);
 gizmo.setSpace('local');
@@ -532,6 +534,15 @@ $('boolApply').onclick = applyBool;
 $('del').onclick = deleteSelected;
 $('dup').onclick = duplicateSelected;
 
+// While Shift/Ctrl/Cmd is held in edit mode the gizmo is hidden so it cannot get in the way of multi-selection
+const syncGizmoForModifier = e => {
+  const hide = mode === 'edit' && !!(e.shiftKey || e.ctrlKey || e.metaKey) && !gizmo.dragging;
+  gizmo.enabled = !hide;
+  gizmo.visible = !hide;
+};
+window.addEventListener('keydown', syncGizmoForModifier);
+window.addEventListener('keyup', syncGizmoForModifier);
+window.addEventListener('blur', () => syncGizmoForModifier({}));
 // Tell clicks from drags so orbiting does not place anything
 let down = null;
 const dom = renderer.domElement;
@@ -550,7 +561,7 @@ dom.addEventListener('pointerup', e => {
   down = null;
   if (gizmo.dragging || onGizmo) return;
   if (mode === 'edit') {
-    if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, e.shiftKey);
+    if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, e.shiftKey || e.ctrlKey || e.metaKey);
   } else if (mode === 'place') {
     const pl = placementAt(e);
     if (pl) {
@@ -693,7 +704,7 @@ function redo() {
 $('undo').onclick = undo;
 $('redo').onclick = redo;
 gizmo.addEventListener('dragging-changed', e => { if (!e.value) commit(); });
-for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz', 'col']) $(id).addEventListener('change', commit);
+for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz', 'col']) $(id).addEventListener('change', e => { if (!e.scrub) commit(); });
 // 3D navigation: pivot = world origin or selection
 let pivotMode = 'origin';
 let navGoal = null;
@@ -725,6 +736,8 @@ function homeView() {
   orbit.update();
 }
 $('pvHome').onclick = homeView;
+setupNumberScrub();
+setupNavGizmo({ canvas: $('navGizmo'), zoomBtn: $('navZoom'), panBtn: $('navPan'), camera, navigate });
 // In select mode the pivot follows selection changes
 // Object list
 const listEl = $('objList');

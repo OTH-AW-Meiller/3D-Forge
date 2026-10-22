@@ -41,37 +41,32 @@ export function createStage(container) {
     camera.position.sub(c).multiplyScalar(k).add(c);
     orbit.target.sub(c).multiplyScalar(k).add(c);
   };
-  // Alt + left drag zooms (capture phase, so it claims the event before the other pointer handlers)
-  let zoomDrag = null;
+  // Blender-style navigation with the middle mouse button: drag orbits, Shift+drag pans, Ctrl+drag zooms
   const el = renderer.domElement;
+  orbit.enableRotate = false;
+  orbit.enablePan = false;
+  const UP = new THREE.Vector3(0, 1, 0);
+  let nav = null;
   el.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || !e.altKey) return;
+    if (e.button !== 1) return;
+    e.preventDefault();
     e.stopImmediatePropagation();
-    zoomDrag = { y: e.clientY };
+    nav = { x: e.clientX, y: e.clientY, mode: e.shiftKey ? 'pan' : e.ctrlKey ? 'zoom' : 'orbit' };
     el.setPointerCapture(e.pointerId);
   }, true);
-  el.addEventListener('pointermove', e => {
-    if (!zoomDrag) return;
-    zoomBy(Math.exp((e.clientY - zoomDrag.y) * 0.008));
-    zoomDrag.y = e.clientY;
-  });
-
-  // Left-drag orbit about the pivot point (OrbitControls only rotates about its target); Shift/Ctrl+drag and right-drag still pan
-  orbit.enableRotate = false;
-  const UP = new THREE.Vector3(0, 1, 0);
-  let rot = null;
-  el.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || rotateBlocked?.()) return;
-    rot = { x: e.clientX, y: e.clientY };
-    el.setPointerCapture(e.pointerId);
-  });
-  el.addEventListener('pointermove', e => {
-    if (!rot) return;
-    if (rotateBlocked?.()) { rot = null; return; }
+  const panBy = (dx, dy) => {
+    const dist = camera.position.distanceTo(orbit.target);
+    const k = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / el.clientHeight;
+    const m = camera.matrixWorld.elements;
+    const move = new THREE.Vector3(m[0], m[1], m[2]).multiplyScalar(-dx * k)
+      .addScaledVector(new THREE.Vector3(m[4], m[5], m[6]), dy * k);
+    camera.position.add(move);
+    orbit.target.add(move);
+  };
+  const orbitBy = (dx, dy) => {
     const c = zoomCenter?.() ?? orbit.target, k = 2 * Math.PI / el.clientHeight;
-    const yaw = -(e.clientX - rot.x) * k;
-    let pitch = -(e.clientY - rot.y) * k;
-    rot.x = e.clientX; rot.y = e.clientY;
+    const yaw = -dx * k;
+    let pitch = -dy * k;
     const view = camera.position.clone().sub(orbit.target);
     const polar = Math.acos(THREE.MathUtils.clamp(view.y / view.length(), -1, 1));
     pitch = THREE.MathUtils.clamp(polar + pitch, 0.01, Math.PI - 0.01) - polar;
@@ -79,13 +74,29 @@ export function createStage(container) {
     const turn = v => v.sub(c).applyAxisAngle(UP, yaw).applyAxisAngle(right.clone().applyAxisAngle(UP, yaw), pitch).add(c);
     turn(camera.position);
     turn(orbit.target);
+  };
+  const zoomDragBy = dy => zoomBy(Math.exp(dy * 0.008));
+  // Look along -dir from the current distance (dir points from the target to the camera)
+  const viewFrom = dir => {
+    const d = dir.clone();
+    if (Math.abs(d.y) > 0.999) d.z += d.y > 0 ? 0.0001 : -0.0001;
+    const dist = camera.position.distanceTo(orbit.target);
+    camera.position.copy(orbit.target).addScaledVector(d.normalize(), dist);
+    camera.up.set(0, 1, 0);
+    orbit.update();
+  };
+  el.addEventListener('pointermove', e => {
+    if (!nav) return;
+    const dx = e.clientX - nav.x, dy = e.clientY - nav.y;
+    nav.x = e.clientX; nav.y = e.clientY;
+    if (nav.mode === 'zoom') zoomDragBy(dy);
+    else if (nav.mode === 'pan') panBy(dx, dy);
+    else orbitBy(dx, dy);
   });
-  const endRot = e => { if (rot) { rot = null; el.releasePointerCapture(e.pointerId); } };
-  el.addEventListener('pointerup', endRot);
-  el.addEventListener('pointercancel', endRot);
-  const endZoom = e => { if (zoomDrag) { zoomDrag = null; el.releasePointerCapture(e.pointerId); } };
-  el.addEventListener('pointerup', endZoom);
-  el.addEventListener('pointercancel', endZoom);
+  const endNav = e => { if (nav) { nav = null; el.releasePointerCapture(e.pointerId); } };
+  el.addEventListener('pointerup', endNav);
+  el.addEventListener('pointercancel', endNav);
+  el.addEventListener('auxclick', e => e.preventDefault());
 
   orbit.enableDamping = false;
   // Fixed zoom step per wheel event (independent of device-specific delta values)
@@ -102,5 +113,5 @@ export function createStage(container) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
-  return { scene, camera, renderer, orbit, ground, resize, setZoomCenter: fn => { zoomCenter = fn; }, setRotateBlocked: fn => { rotateBlocked = fn; } };
+  return { scene, camera, renderer, orbit, ground, resize, navigate: { orbit: orbitBy, pan: panBy, zoom: zoomDragBy, viewFrom }, setZoomCenter: fn => { zoomCenter = fn; }, setRotateBlocked: fn => { rotateBlocked = fn; } };
 }

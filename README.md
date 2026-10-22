@@ -17,7 +17,7 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 ## Features
 
 ### Scene & navigation
-- Rotatable 3D view (orbit), pan and zoom (mouse wheel or `Alt`+left drag, zooming and orbiting around the selected pivot), with a ground grid and axes
+- Rotatable 3D view (orbit), Blender-style navigation with the middle mouse button (drag = orbit, `Shift`+drag = pan, `Ctrl`+drag = zoom; mouse wheel also zooms); a navigation gizmo at the top right (click an axis to snap the view, drag to orbit) with zoom and pan drag buttons below it, orbiting and zooming around the selected pivot, with a ground grid and axes
 - Pivot options: orbit around the origin or the current selection; "Center" focuses the view on the pivot, "Home" (`Home`) resets the view to the initial position
 - Optional grid snapping (units configurable, 0 = off)
 
@@ -29,7 +29,7 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 - Select, move, rotate and scale with a gizmo (global or local orientation)
 - A yellow frame shows the extent of the selected object(s)
 - Multi-selection: `Shift`/`Ctrl`/`Cmd`+click in the view or in the object list toggles objects, `Ctrl+A` selects all; the gizmo transforms the whole selection, and duplicate, delete and colour apply to all selected objects
-- Numeric position / scale / rotation / colour fields in the side panel
+- Numeric position / scale / rotation / colour fields in the side panel; all number fields can be changed by dragging the mouse up/down inside them (`Shift` = fine)
 - Duplicate and delete objects
 - **Bool**: with exactly two objects selected, combine them with Add (A + B) or Subtract (A − B), where A is the first selected object; the result is a new editable mesh (BSP-based CSG, face colours are not kept)
 - **Edges** (Shift+H): hides the edges between faces of the selected objects whose angle is below a limit (default 30°) by merging those faces
