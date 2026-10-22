@@ -27,7 +27,17 @@ input[type=number] { width: 100%; box-sizing: border-box; background: #1e2127; c
 input[type=color] { width: 44px; height: 26px; padding: 0; border: none; background: none; }
 .hint { font-size: 12px; color: #8b93a1; line-height: 1.5; }
 #navWrap { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 6px; z-index: 2; }
-#nav, #navHome { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; font-size: 12px; color: #8b93a1; }
+#nav { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; font-size: 12px; color: #8b93a1; }
+#navHome { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8b93a1; }
+#createWrap { position: absolute; top: 40px; left: 116px; height: 40px; display: flex; align-items: center; gap: 6px; z-index: 2; }
+#gCreate, #gTools { position: relative; }
+#gCreate > button, #gTools > button { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 12px; }
+#gCreate > button::after, #gTools > button::after { content: ""; position: absolute; top: calc(100% + 3px); left: 50%; display: none; border: 6px solid transparent; border-top-color: #282c34ee; transform: translateX(-50%); }
+#gCreate.open > button::after, #gTools.open > button::after { display: block; }
+#gCreate .flyout, #gTools .flyout { display: none; position: absolute; top: calc(100% + 9px); left: 0; flex-direction: row; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; }
+#gCreate.open .flyout, #gTools.open .flyout { display: flex; }
+#gTools > button:disabled, #gTools .flyout button:disabled { opacity: .35; cursor: default; }
+#gCreate .flyout button, #gTools .flyout button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 12px; white-space: nowrap; }
 #nav button, #navHome button { padding: 4px 8px; font-size: 12px; }
 #navTools { position: absolute; top: 82px; right: 270px; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 2; touch-action: none; }
 #navGizmo { cursor: grab; }
@@ -61,6 +71,7 @@ input[type=color] { width: 44px; height: 26px; padding: 0; border: none; backgro
 .sub:hover > .subdrop { display: flex; }
 .sub:hover > .subhead { background: #3a404b; }
 .dropdown button { display: flex; justify-content: space-between; gap: 28px; white-space: nowrap; background: none; border: none; border-radius: 0; text-align: left; padding: 6px 14px; }
+.dropdown .mi { display: inline-flex; align-items: center; gap: 8px; }
 .dropdown button:disabled { opacity: .4; cursor: default; }
 .dropdown button:disabled:hover { background: none; color: #ddd; }
 .dropdown button:hover { background: #2f6fdb; color: #fff; }

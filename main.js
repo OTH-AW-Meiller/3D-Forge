@@ -339,12 +339,21 @@ function setShape(t) {
 }
 document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => setShape(b.dataset.shape));
 $('mSelect').onclick = () => setMode('select');
+// Tools flyout: toggled by its button, closed by clicking elsewhere
+$('mTools').onclick = e => {
+  e.stopPropagation();
+  if (mode === 'place') setMode('select');
+  $('gTools').classList.toggle('open');
+};
+document.addEventListener('click', e => { if (!e.target.closest('#gTools')) $('gTools').classList.remove('open'); });
 $('mCreate').onclick = () => (mode === 'place' ? setMode('select') : setShape(shape));
 function updateToolbar() {
   const editing = mode === 'edit';
   for (const id of ['tMove', 'tRot', 'tScale']) $(id).disabled = !selected;
   for (const id of ['dup', 'del']) $(id).disabled = !selected || editing;
   $('mEdit').disabled = selection.length !== 1;
+  $('mTools').disabled = !selection.length;
+  if (!selection.length) $('gTools').classList.remove('open');
   if (!canBool()) boolOpen = false;
   $('bool').disabled = !canBool();
   $('bool').classList.toggle('active', boolOpen);

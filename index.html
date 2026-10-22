@@ -49,8 +49,11 @@
   <div class="menu" id="mEditMenu">
     <button>Edit</button>
     <div class="dropdown">
-      <button id="undo" disabled>Undo</button>
-      <button id="redo" disabled>Redo</button>
+      <button id="undo" disabled><span class="mi"><span class="ico" style="--icon:url(icons/undo.svg)"></span>Undo</span></button>
+      <button id="redo" disabled><span class="mi"><span class="ico" style="--icon:url(icons/redo.svg)"></span>Redo</span></button>
+      <span class="msep"></span>
+      <button id="dup" title="Duplicate (Ctrl+D)"><span class="mi"><span class="ico" style="--icon:url(icons/dup.svg)"></span>Duplicate</span></button>
+      <button id="del" title="Delete (Del)"><span class="mi"><span class="ico" style="--icon:url(icons/del.svg)"></span>Delete</span></button>
     </div>
   </div>
   <div class="menu" id="mViewport">
@@ -73,15 +76,6 @@
 <div id="view"></div>
 <div id="toolbar">
   <button id="mSelect" title="Select (1)"><i><span class="ico" style="--icon:url(icons/select.svg)"></span></i>Select</button>
-  <div class="group" id="gCreate">
-    <button id="mCreate" title="Create (2–5)"><i><span class="ico" style="--icon:url(icons/create.svg)"></span></i>Create</button>
-    <div class="flyout">
-      <button data-shape="box" class="active" title="Box (2)"><i><span class="ico" style="--icon:url(icons/box.svg)"></span></i>Box</button>
-      <button data-shape="sphere" title="Sphere (3)"><i><span class="ico" style="--icon:url(icons/sphere.svg)"></span></i>Sphere</button>
-      <button data-shape="cylinder" title="Cylinder (4)"><i><span class="ico" style="--icon:url(icons/cylinder.svg)"></span></i>Cylinder</button>
-      <button data-shape="tube" title="Tube (5)"><i><span class="ico" style="--icon:url(icons/tube.svg)"></span></i>Tube</button>
-    </div>
-  </div>
   <div class="group" id="gEdit">
     <button id="mEdit" title="Sub-object mode (Tab)"><i><span class="ico" style="--icon:url(icons/edit.svg)"></span></i>Edit</button>
     <div class="flyout">
@@ -99,18 +93,32 @@
   <button id="tMove" class="active" title="Move (W)"><i><span class="ico" style="--icon:url(icons/move.svg)"></span></i>Move</button>
   <button id="tRot" title="Rotate (E)"><i><span class="ico" style="--icon:url(icons/rotate.svg)"></span></i>Rotate</button>
   <button id="tScale" title="Scale (R)"><i><span class="ico" style="--icon:url(icons/scale.svg)"></span></i>Scale</button>
-  <button id="tSpace" class="active" title="Gizmo orientation: global / local (X)"><i><span class="ico" style="--icon:url(icons/space.svg)"></span></i><span id="spaceLbl">Local</span></button>
-  <span class="sep"></span>
-  <button id="dup" title="Duplicate (Ctrl+D)"><i><span class="ico" style="--icon:url(icons/dup.svg)"></span></i>Duplicate</button>
-  <button id="del" title="Delete (Del)"><i><span class="ico" style="--icon:url(icons/del.svg)"></span></i>Delete</button>
-  <span class="sep"></span>
-  <button id="bool" title="Boolean operation on two selected objects (Shift+B)"><i><span class="ico" style="--icon:url(icons/bool.svg)"></span></i>Bool</button>
-  <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i><span class="ico" style="--icon:url(icons/smooth.svg)"></span></i>Edges</button>
-  <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i><span class="ico" style="--icon:url(icons/holes.svg)"></span></i>Close holes</button>
 </div>
 <div id="status"></div>
+<div id="createWrap">
+  <div class="group" id="gCreate">
+    <button id="mCreate" title="Create (2–5)"><i><span class="ico" style="--icon:url(icons/create.svg)"></span></i>Create</button>
+    <div class="flyout">
+      <button data-shape="box" class="active" title="Box (2)"><i><span class="ico" style="--icon:url(icons/box.svg)"></span></i>Box</button>
+      <button data-shape="sphere" title="Sphere (3)"><i><span class="ico" style="--icon:url(icons/sphere.svg)"></span></i>Sphere</button>
+      <button data-shape="cylinder" title="Cylinder (4)"><i><span class="ico" style="--icon:url(icons/cylinder.svg)"></span></i>Cylinder</button>
+      <button data-shape="tube" title="Tube (5)"><i><span class="ico" style="--icon:url(icons/tube.svg)"></span></i>Tube</button>
+    </div>
+  </div>
+  <div class="group" id="gTools">
+    <button id="mTools" title="Tools"><i><span class="ico" style="--icon:url(icons/tools.svg)"></span></i>Tools</button>
+    <div class="flyout">
+      <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i><span class="ico" style="--icon:url(icons/smooth.svg)"></span></i>Edges</button>
+      <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i><span class="ico" style="--icon:url(icons/holes.svg)"></span></i>Close holes</button>
+      <button id="bool" title="Boolean operation on two selected objects (Shift+B)"><i><span class="ico" style="--icon:url(icons/bool.svg)"></span></i>Bool</button>
+    </div>
+  </div>
+</div>
 <div id="navWrap">
-<div id="navHome"><button id="pvHome" title="Reset view to the initial position (Home)"><span class="ico" style="--icon:url(icons/home.svg)"></span>Home</button></div>
+<div id="navHome">
+  <button id="tSpace" class="active" title="Gizmo orientation: global / local (X)"><i><span class="ico" style="--icon:url(icons/space.svg)"></span></i><span id="spaceLbl">Local</span></button>
+  <button id="pvHome" title="Reset view to the initial position (Home)"><span class="ico" style="--icon:url(icons/home.svg)"></span>Home</button>
+</div>
 <div id="nav">
   <span>Orbit</span>
   <button id="pvOrigin" title="Orbit around the origin">Origin</button>
@@ -176,7 +184,7 @@
     Middle mouse drag: orbit around the orbit center · Shift+middle drag: pan · Ctrl+middle drag or wheel: zoom<br>
     F: center view on orbit center · Orbit buttons (top right): rotate around origin or selection<br>
     <b>Objects</b><br>
-    <b>Create</b> (toolbar): pick Box / Sphere / Cylinder / Tube, set its parameters in the panel, click the ground or an object face to place it. The last created object is selected.<br>
+    <b>Create</b>: choose Box / Sphere / Cylinder / Tube, set its parameters in the panel, then click the ground or an object face to place it. The last created object is selected.<br>
     <b>Select</b>: click an object in the view or in the object list (double-click a list entry to rename it). Use the gizmo to move / rotate / scale; the grid field sets the snap step (0 = continuous).<br>
     Del: delete · Ctrl+D: duplicate · Esc: deselect · Ctrl+Z / Ctrl+Shift+Z: undo / redo<br>
     <b>Shortcuts</b><br>
