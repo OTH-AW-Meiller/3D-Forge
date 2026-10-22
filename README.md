@@ -22,7 +22,7 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 - Optional grid snapping (units configurable, 0 = off)
 
 ### Primitives
-- Box, sphere, cylinder and tube, placed by clicking in the 3D view with a live preview
+- Box, sphere, cylinder, tube and plane, placed by clicking in the 3D view with a live preview
 - Per-shape parameters (e.g. size, subdivisions) and a colour for new objects
 
 ### Object mode
@@ -73,7 +73,7 @@ Imported meshes become editable objects with their centre as origin.
 |--------|------|
 | Open / save JSON | `Ctrl+O` / `Ctrl+S` |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z`, `Ctrl+Y` |
-| Select mode / create box, sphere, cylinder, tube | `1` / `2`–`5` |
+| Select mode / create box, sphere, cylinder, tube, plane | `1` / `2`–`6` |
 | Toggle edit mode | `Tab` |
 | Move / rotate / scale | `W` / `E` / `R` |
 | Gizmo global / local | `X` |

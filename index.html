@@ -99,12 +99,14 @@
 <div id="status"></div>
 <div id="createWrap">
   <div class="group" id="gCreate">
-    <button id="mCreate" title="Create (2–5)"><i><span class="ico" style="--icon:url(icons/create.svg)"></span></i>Create</button>
+    <button id="mCreate" title="Create (2–6)"><i><span class="ico" style="--icon:url(icons/create.svg)"></span></i>Create</button>
     <div class="flyout">
       <button data-shape="box" class="active" title="Box (2)"><i><span class="ico" style="--icon:url(icons/box.svg)"></span></i>Box</button>
       <button data-shape="sphere" title="Sphere (3)"><i><span class="ico" style="--icon:url(icons/sphere.svg)"></span></i>Sphere</button>
       <button data-shape="cylinder" title="Cylinder (4)"><i><span class="ico" style="--icon:url(icons/cylinder.svg)"></span></i>Cylinder</button>
       <button data-shape="tube" title="Tube (5)"><i><span class="ico" style="--icon:url(icons/tube.svg)"></span></i>Tube</button>
+      <button data-shape="plane" title="Plane (6)"><i><span class="ico" style="--icon:url(icons/plane.svg)"></span></i>Plane</button>
+      <button id="polyBtn" title="Draw a polyline on a surface, Enter closes it into a face"><i><span class="ico" style="--icon:url(icons/polyline.svg)"></span></i>Polyline</button>
     </div>
   </div>
   <div class="group" id="gTools">
@@ -113,6 +115,7 @@
       <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i><span class="ico" style="--icon:url(icons/smooth.svg)"></span></i>Edges</button>
       <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i><span class="ico" style="--icon:url(icons/holes.svg)"></span></i>Close holes</button>
       <button id="arrayBtn" title="Create several copies of the selected objects"><i><span class="ico" style="--icon:url(icons/array.svg)"></span></i>Array</button>
+      <button id="flipBtn" title="Flip the normals of the selected objects"><i><span class="ico" style="--icon:url(icons/flip.svg)"></span></i>Flip</button>
       <button id="remeshBtn" title="Rebuild the mesh with evenly sized triangles"><i><span class="ico" style="--icon:url(icons/remesh.svg)"></span></i>Remesh</button>
       <button id="mergeBtn" title="Merge the selected objects into one"><i><span class="ico" style="--icon:url(icons/merge.svg)"></span></i>Merge</button>
       <button id="bool" title="Boolean operation on two selected objects (Shift+B)"><i><span class="ico" style="--icon:url(icons/bool.svg)"></span></i>Bool</button>
@@ -219,7 +222,7 @@
     <b>Select</b>: click an object in the view or in the object list (double-click a list entry to rename it). Use the gizmo to move / rotate / scale; the grid field sets the snap step (0 = continuous).<br>
     Del: delete · Ctrl+D: duplicate · Esc: deselect · Ctrl+Z / Ctrl+Shift+Z: undo / redo<br>
     <b>Shortcuts</b><br>
-    1: Select · 2–5: Box / Sphere / Cylinder / Tube · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
+    1: Select · 2–6: Box / Sphere / Cylinder / Tube / Plane · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
     <b>File menu</b>: load / save JSON (lossless); import / export 3DS, OBJ, STL, glTF/GLB.
   </div>
   <div class="row" style="margin-top:12px"><button data-close>Close</button></div>

@@ -5,6 +5,14 @@ const dim = (key, label, def, step = 0.5) => ({ key, label, def, min: 0.01, step
 const seg = (key, label, def, min, max, step = 1) => ({ key, label, def, min, max, step, int: true });
 
 export const SHAPES = {
+  plane: {
+    label: 'Plane',
+    fields: [dim('w', 'Size', 1)],
+    build: p => ({
+      geometry: new THREE.PlaneGeometry(p.w, p.w).rotateX(-Math.PI / 2),
+      size: new THREE.Vector3(p.w, 0, p.w),
+    }),
+  },
   box: {
     label: 'Box',
     fields: [

@@ -58,7 +58,7 @@ function addBox({ position, size, color, rotation, type = 'box', params, positio
   } else {
     ({ geometry: geo, edges } = buildShape(type, params));
   }
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.6,
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: type === 'plane' ? THREE.DoubleSide : THREE.FrontSide,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
   Object.assign(mesh.userData, { type, params, baseColor: new THREE.Color(color), name: uniqueName(name || SHAPES[type].label + ' 1') });
   if (model) {
@@ -303,6 +303,7 @@ function setMode(m) {
     if (pivotBeforeEdit) setPivotMode(pivotBeforeEdit);
     pivotBeforeEdit = null;
   }
+  if (mode === 'poly' && m !== 'poly') polyReset();
   const wasPlace = mode === 'place';
   if (m === 'place' && !wasPlace) selectionBeforePlace = selection.slice();
   mode = m;
@@ -317,12 +318,15 @@ function setMode(m) {
     pivotBeforeEdit = pivotMode;
     setPivotMode('selection');
   }
-  $('mCreate').classList.toggle('active', m === 'place');
-  $('secCreate').hidden = m !== 'place';
-  $('secSel').hidden = m === 'place';
-  $('gCreate').classList.toggle('open', m === 'place');
+  const creating = m === 'place' || m === 'poly';
+  $('mCreate').classList.toggle('active', creating);
+  $('secCreate').hidden = !creating;
+  $('secSel').hidden = creating;
+  $('gCreate').classList.toggle('open', creating);
   document.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('active', m === 'place' && b.dataset.shape === shape));
-  if (m === 'place') select(null); else ghost.visible = false;
+  if (m === 'place' || m === 'poly') select(null);
+  if (m !== 'place') ghost.visible = false;
+  if (m === 'poly') $('status').textContent = 'Polyline: click points, Enter or click the first point closes, Backspace removes, Esc cancels';
   updateToolbar();
 }
 function setSub(kind) {
@@ -371,6 +375,7 @@ function updateToolbar() {
   for (const id of ['tMove', 'tRot', 'tScale']) $(id).disabled = !selected;
   for (const id of ['dup', 'del']) $(id).disabled = !selected || editing;
   $('mEdit').disabled = selection.length !== 1;
+  $('polyBtn').classList.toggle('active', mode === 'poly');
   $('mTools').disabled = !selection.length;
   if (!selection.length) $('gTools').classList.remove('open');
   if (!canBool()) boolOpen = false;
@@ -383,6 +388,7 @@ function updateToolbar() {
   $('mergeRow').hidden = !mergeOpen;
   if (!canSmooth()) remeshOpen = false;
   $('remeshBtn').disabled = !canSmooth();
+  $('flipBtn').disabled = !canSmooth();
   $('remeshBtn').classList.toggle('active', remeshOpen);
   $('remeshRow').hidden = !remeshOpen;
   if (!canSmooth()) arrayOpen = false;
@@ -759,6 +765,118 @@ function applyRemesh() {
 }
 $('remeshBtn').onclick = () => { if (canSmooth()) toggleTool('remesh'); };
 $('remeshApply').onclick = applyRemesh;
+// Flip: reverse the triangle winding of every selected object, which turns its normals around
+function flipSelected() {
+  if (!canSmooth()) return;
+  const sel = selection.slice(), done = [];
+  select(null);
+  for (const mesh of sel) {
+    const um = mesh.userData, pos = nonIndexedPositions(mesh.geometry);
+    for (let i = 0; i < pos.length; i += 9) for (let k = 0; k < 3; k++) { const t = pos[i + 3 + k]; pos[i + 3 + k] = pos[i + 6 + k]; pos[i + 6 + k] = t; }
+    const oldM = um.model;
+    const faces = oldM ? oldM.faceOfTri : new Model(pos.slice()).faceOfTri;
+    const idx = boxes.indexOf(mesh), name = um.name;
+    const nm = addBox({ position: mesh.position.clone(), size: mesh.scale.clone(), color: um.baseColor.clone(),
+      rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z], positions: pos, faces,
+      faceColors: oldM?.faceColors.size ? [...oldM.faceColors] : undefined, name: name + '_tmp', hidden: um.hidden, locked: um.locked });
+    boxes.splice(boxes.indexOf(nm), 1); boxes.splice(idx, 0, nm);
+    boxes.splice(boxes.indexOf(mesh), 1);
+    disposeMesh(mesh);
+    nm.userData.name = name;
+    done.push(nm);
+  }
+  done.forEach(o => select(o, true));
+  commit();
+  syncList();
+  updateToolbar();
+  $('status').textContent = `Normals flipped on ${done.length} object(s)`;
+}
+$('flipBtn').onclick = flipSelected;
+
+// Polyline: click points on a surface (the grid or an object's face), Enter closes the outline into a flat face
+let polyPts = [], polyPlane = null, polyCursor = null;
+const polyLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffc233, depthTest: false }));
+const polyDots = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xffc233, size: 8, sizeAttenuation: false, depthTest: false }));
+polyLine.renderOrder = polyDots.renderOrder = 999;
+polyLine.frustumCulled = polyDots.frustumCulled = false;
+polyLine.visible = polyDots.visible = false;
+scene.add(polyLine, polyDots);
+function polyRefresh() {
+  const pts = polyCursor ? [...polyPts, polyCursor] : polyPts.slice();
+  if (polyPts.length > 2 && polyCursor) pts.push(polyPts[0]);
+  polyLine.geometry.dispose();
+  polyLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  polyDots.geometry.dispose();
+  polyDots.geometry = new THREE.BufferGeometry().setFromPoints(polyPts);
+  polyLine.visible = pts.length > 1;
+  polyDots.visible = polyPts.length > 0;
+}
+function polyReset() { polyPts = []; polyPlane = null; polyCursor = null; polyRefresh(); }
+// Point under the mouse on the drawing surface; the first click defines the surface
+function polyPointAt(e) {
+  setPointer(e);
+  let p = null;
+  if (!polyPlane) {
+    const hit = raycaster.intersectObjects([...boxes.filter(m => m.visible), ground], false)[0];
+    if (!hit) return null;
+    const n = hit.object === ground ? new THREE.Vector3(0, 1, 0) : hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+    if (n.dot(raycaster.ray.direction) > 0) n.negate();
+    polyPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, hit.point);
+    p = hit.point.clone();
+  } else {
+    p = raycaster.ray.intersectPlane(polyPlane, new THREE.Vector3());
+    if (!p) return null;
+  }
+  // Snap on axis-aligned surfaces only, so that the points stay on the surface
+  const n = polyPlane.normal, axes = ['x', 'y', 'z'];
+  const ax = axes.reduce((a, b) => Math.abs(n[b]) > Math.abs(n[a]) ? b : a);
+  if (Math.abs(n[ax]) > 0.999) {
+    axes.forEach(a => { if (a !== ax) p[a] = snapV(p[a]); });
+    p[ax] = -polyPlane.constant / n[ax];
+  }
+  return p;
+}
+function polyFinish() {
+  if (polyPts.length < 3) { $('status').textContent = 'Polyline needs at least 3 points'; return; }
+  const n = polyPlane.normal.clone();
+  const u = new THREE.Vector3().crossVectors(n, Math.abs(n.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+  const v = new THREE.Vector3().crossVectors(n, u);
+  const tris = THREE.ShapeUtils.triangulateShape(polyPts.map(p => new THREE.Vector2(p.dot(u), p.dot(v))), []);
+  if (!tris.length) { $('status').textContent = 'Polyline outline is degenerate'; return; }
+  const c = polyPts.reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(polyPts.length);
+  const pos = [];
+  for (const t of tris) {
+    const [a, b, d] = t.map(i => polyPts[i]);
+    const flip = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(d, a)).dot(n) < 0;
+    for (const p of flip ? [a, d, b] : [a, b, d]) pos.push(p.x - c.x, p.y - c.y, p.z - c.z);
+  }
+  polyReset();
+  setMode('select');
+  select(addBox({ position: c, color: $('ncol').value, type: 'plane', positions: new Float32Array(pos), name: 'Polyline 1' }));
+  commit();
+  $('status').textContent = 'Polyline face created';
+}
+function polyClick(e) {
+  const p = polyPointAt(e);
+  if (!p) return;
+  if (polyPts.length > 2) {
+    const r = renderer.domElement.getBoundingClientRect(), s = polyPts[0].clone().project(camera);
+    if (Math.hypot(e.clientX - (r.left + (s.x + 1) / 2 * r.width), e.clientY - (r.top + (1 - s.y) / 2 * r.height)) < 10) { polyFinish(); return; }
+  }
+  if (polyPts.length && polyPts[polyPts.length - 1].distanceTo(p) < 1e-6) return;
+  polyPts.push(p);
+  polyRefresh();
+}
+$('polyBtn').onclick = () => { setMode(mode === 'poly' ? 'select' : 'poly'); };
+window.addEventListener('keydown', e => {
+  if (mode !== 'poly' || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === 'Enter') polyFinish();
+  else if (e.key === 'Escape') setMode('select');
+  else if (e.key === 'Backspace') { polyPts.pop(); if (!polyPts.length) polyPlane = null; polyRefresh(); }
+  else return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
 // Array: copy i (1..n) of each selected object gets i times the offset / rotation and scale^i
 let arrayOpen = false;
 // Placement of copy i. Local: offset and rotation accumulate on the source (rotation around the object's own axes).
@@ -831,6 +949,10 @@ let down = null;
 const dom = renderer.domElement;
 dom.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled }; });
 dom.addEventListener('pointermove', e => {
+  if (mode === 'poly') {
+    if (polyPlane && !e.buttons) { polyCursor = polyPointAt(e); polyRefresh(); }
+    return;
+  }
   if (mode !== 'place' || e.buttons) { if (e.buttons) ghost.visible = false; return; }
   const pl = placementAt(e);
   if (!pl) { ghost.visible = false; return; }
@@ -847,6 +969,8 @@ dom.addEventListener('pointerup', e => {
   if (gizmo.dragging || onGizmo) return;
   if (mode === 'edit') {
     if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, e.shiftKey || e.ctrlKey || e.metaKey);
+  } else if (mode === 'poly') {
+    polyClick(e);
   } else if (mode === 'place') {
     const pl = placementAt(e);
     if (pl) {
@@ -887,7 +1011,7 @@ setupShortcuts({
   rename: () => { const inp = listEl.querySelector('.sel input'); if (!inp) return false; inp.readOnly = false; inp.focus(); inp.select(); },
   objColor: () => $('col').click(),
   select: selectTool,
-  box: () => setShape('box'), sphere: () => setShape('sphere'), cylinder: () => setShape('cylinder'), tube: () => setShape('tube'),
+  box: () => setShape('box'), sphere: () => setShape('sphere'), cylinder: () => setShape('cylinder'), tube: () => setShape('tube'), plane: () => setShape('plane'),
   editMode: () => setMode(mode === 'edit' ? 'select' : 'edit'),
   move: () => setTool('translate'), rotate: () => setTool('rotate'), scale: () => setTool('scale'),
   space: () => setSpace(gizmo.space === 'local' ? 'world' : 'local'),
