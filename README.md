@@ -53,10 +53,10 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 | Format | Import | Export | Notes |
 |--------|:------:|:------:|-------|
 | JSON (3DForge) | ✓ | ✓ | Lossless, includes face colours |
-| glTF / GLB | ✓ | ✓ | Face colours are kept via vertex colours |
+| glTF / GLB | ✓ | ✓ | Face colours are kept via vertex colours; imported textures are sampled per triangle |
 | OBJ | ✓ | ✓ | No materials / colours |
 | STL | ✓ | ✓ | No colours |
-| 3DS | ✓ | ✓ | No transformation matrices |
+| 3DS | ✓ | ✓ | Face colours are kept; no transformation matrices |
 
 Imported meshes become editable objects with their centre as origin.
 
@@ -105,4 +105,4 @@ The complete, always up-to-date list is in the app (`?`).
 ## Limitations
 - Chamfer works only on edges shared by exactly two faces; Connect only on boundary points of one face
 - The mirror setting is not stored in undo history or files
-- OBJ is exported without `.mtl`; OBJ / STL / 3DS do not keep face colours
+- OBJ is exported without `.mtl`; OBJ / STL do not keep face colours
