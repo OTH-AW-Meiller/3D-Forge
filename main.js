@@ -605,7 +605,7 @@ function worldPositions(mesh) {
   }
   return pos;
 }
-function toggleBool() { if (!canBool()) return; boolOpen = !boolOpen; updateToolbar(); }
+function toggleBool() { if (!canBool()) return; toggleTool('bool'); }
 function applyBool() {
   if (!canBool()) return;
   const [A, B] = selection, op = document.querySelector('[name=boolOp]:checked').value;
@@ -709,7 +709,7 @@ function mergeSelected() {
   commit();
   updateToolbar();
 }
-$('mergeBtn').onclick = () => { if (!canMerge()) return; mergeOpen = !mergeOpen; updateToolbar(); };
+$('mergeBtn').onclick = () => { if (canMerge()) toggleTool('merge'); };
 $('mergeApply').onclick = mergeSelected;
 // Remesh: rebuild each selected mesh with evenly sized triangles (edge length = longest side / fineness)
 let remeshOpen = false;
@@ -757,7 +757,7 @@ function applyRemesh() {
   syncList();
   updateToolbar();
 }
-$('remeshBtn').onclick = () => { if (!canSmooth()) return; remeshOpen = !remeshOpen; updateToolbar(); };
+$('remeshBtn').onclick = () => { if (canSmooth()) toggleTool('remesh'); };
 $('remeshApply').onclick = applyRemesh;
 // Array: copy i (1..n) of each selected object gets i times the offset / rotation and scale^i
 let arrayOpen = false;
@@ -803,10 +803,17 @@ function applyArray() {
   updateToolbar();
   $('status').textContent = `${copies.length} copies created`;
 }
-$('arrayBtn').onclick = () => { if (!canSmooth()) return; arrayOpen = !arrayOpen; updateToolbar(); };
+$('arrayBtn').onclick = () => { if (canSmooth()) toggleTool('array'); };
 $('arrayApply').onclick = applyArray;
 $('bool').onclick = toggleBool;
-$('smooth').onclick = () => { if (!canSmooth()) return; smoothOpen = !smoothOpen; updateToolbar(); };
+$('smooth').onclick = () => { if (canSmooth()) toggleTool('smooth'); };
+// Only one tool panel can be open at a time
+function toggleTool(name) {
+  const wasOpen = { bool: boolOpen, merge: mergeOpen, remesh: remeshOpen, array: arrayOpen, smooth: smoothOpen }[name];
+  boolOpen = mergeOpen = remeshOpen = arrayOpen = smoothOpen = false;
+  if (!wasOpen) ({ bool: () => boolOpen = true, merge: () => mergeOpen = true, remesh: () => remeshOpen = true, array: () => arrayOpen = true, smooth: () => smoothOpen = true })[name]();
+  updateToolbar();
+}
 $('smoothApply').onclick = applySmooth;
 $('closeHoles').onclick = closeHolesSelected;
 $('boolApply').onclick = applyBool;

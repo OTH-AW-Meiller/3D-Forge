@@ -6,8 +6,8 @@
 
 export const SHORTCUTS = [
   // File
-  { id: 'open', group: 'File', label: 'Open / import JSON', keys: ['Ctrl+O'], el: '[data-imp=".json"]' },
-  { id: 'save', group: 'File', label: 'Save / export JSON', keys: ['Ctrl+S'], el: '#exp' },
+  { id: 'open', group: 'File', label: 'Load JSON', keys: ['Ctrl+O'], el: '[data-imp=".json"]' },
+  { id: 'save', group: 'File', label: 'Save JSON', keys: ['Ctrl+S'], el: '#exp' },
   { id: 'clear', group: 'File', label: 'Clear scene', keys: ['Alt+N'], el: '#clear' },
   // Edit
   { id: 'undo', group: 'Edit', label: 'Undo', keys: ['Ctrl+Z'], el: '#undo' },

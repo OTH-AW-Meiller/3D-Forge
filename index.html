@@ -23,10 +23,12 @@
   <div class="menu" id="mFile">
     <button>File</button>
     <div class="dropdown">
+      <button data-imp=".json">Load (3DForge JSON)</button>
+      <button id="exp">Save (3DForge JSON)</button>
+      <span class="msep"></span>
       <div class="sub">
         <button class="subhead">Import <span>▸</span></button>
         <div class="subdrop">
-          <button data-imp=".json">JSON (3DForge)</button>
           <button data-imp=".obj">OBJ</button>
           <button data-imp=".stl">STL</button>
           <button data-imp=".gltf,.glb">glTF / GLB</button>
@@ -36,7 +38,6 @@
       <div class="sub">
         <button class="subhead">Export <span>▸</span></button>
         <div class="subdrop">
-          <button id="exp">JSON (3DForge)</button>
           <button data-exp="obj">OBJ</button>
           <button data-exp="stl">STL</button>
           <button data-exp="glb">glTF (GLB)</button>
@@ -146,7 +147,7 @@
   </div>
 
   <div id="secSel" hidden>
-    <h3>Selected object</h3>
+    <h3>Selected</h3>
     <div class="row" id="mirrorRow" hidden>Mirror: <label><input type="checkbox" data-mirror="x"> X</label> <label><input type="checkbox" data-mirror="y"> Y</label> <label><input type="checkbox" data-mirror="z"> Z</label></div>
     <div class="row" id="chamferRow" hidden>Chamfer width: <input type="number" id="chamferW" value="0.2" min="0.01" step="0.05" style="width:70px"></div>
     <div id="boolRow" hidden>
@@ -187,6 +188,7 @@
       <div class="hint">Approx. number of edges along the longest side of each object. Higher = finer. Interior geometry is removed (skin only). Sharp edges are kept; face colors are transferred.</div>
       <div class="row"><button id="remeshApply">Apply</button> <span class="hint" id="remeshMsg"></span></div>
     </div>
+    <h3>Transformations</h3>
     <div id="props" class="disabled">
       <div class="grid3">
         <span></span><span>X</span><span>Y</span><span>Z</span>
@@ -218,7 +220,7 @@
     Del: delete · Ctrl+D: duplicate · Esc: deselect · Ctrl+Z / Ctrl+Shift+Z: undo / redo<br>
     <b>Shortcuts</b><br>
     1: Select · 2–5: Box / Sphere / Cylinder / Tube · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
-    <b>File menu</b>: import / export JSON (lossless), 3DS, OBJ, STL, glTF/GLB.
+    <b>File menu</b>: load / save JSON (lossless); import / export 3DS, OBJ, STL, glTF/GLB.
   </div>
   <div class="row" style="margin-top:12px"><button data-close>Close</button></div>
 </dialog>
