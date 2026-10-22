@@ -17,8 +17,8 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 ## Features
 
 ### Scene & navigation
-- Rotatable 3D view (orbit), Blender-style navigation with the middle mouse button (drag = orbit, `Shift`+drag = pan, `Ctrl`+drag = zoom; mouse wheel also zooms); a navigation gizmo at the top right (click an axis to snap the view, drag to orbit) with zoom and pan drag buttons below it, orbiting and zooming around the selected pivot, with a ground grid and axes
-- Pivot options: orbit around the origin or the current selection; "Center" focuses the view on the pivot, "Home" (`Home`) resets the view to the initial position
+- Rotatable 3D view (orbit), Blender-style navigation with the middle mouse button (drag = orbit, `Shift`+drag = pan, `Ctrl`+drag = zoom; mouse wheel also zooms); a navigation gizmo at the top right (click an axis to snap the view, drag to orbit) with zoom and pan drag buttons below it, orbiting and zooming around the selected orbit center, with a ground grid and axes
+- Orbit options: orbit around the origin or the current selection; "Center" focuses the view on the orbit center, "Home" (`Home`) resets the view to the initial position
 - Optional grid snapping (units configurable, 0 = off)
 
 ### Primitives
@@ -78,7 +78,7 @@ Imported meshes become editable objects with their centre as origin.
 | Move / rotate / scale | `W` / `E` / `R` |
 | Gizmo global / local | `X` |
 | Duplicate / delete | `Ctrl+D` / `Del` |
-| Center view on pivot | `F` |
+| Center view on orbit center | `F` |
 | Edit mode: vertex / edge / face | `1` / `2` / `3` |
 | Edit mode: add / remove / chamfer | `Enter` / `Del` / `B` |
 | Edit mode: mirror X / Y / Z | `Shift+X` / `Shift+Y` / `Shift+Z` |

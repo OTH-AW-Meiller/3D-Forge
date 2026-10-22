@@ -788,7 +788,6 @@ gizmo.addEventListener('dragging-changed', e => { if (!e.value) commit(); });
 for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz', 'col']) $(id).addEventListener('change', e => { if (!e.scrub) commit(); });
 // 3D navigation: pivot = world origin or selection
 let pivotMode = 'origin';
-editor.pivotAtOrigin = true;
 let navGoal = null;
 let navKey = '';
 function selectionCenter() {
@@ -802,8 +801,6 @@ setRotateBlocked(() => !!gizmo.axis || gizmo.dragging);
 function focusPivot() { const p = pivotPoint(); if (p) navGoal = p; }
 function setPivotMode(p) {
   pivotMode = p;
-  editor.pivotAtOrigin = p === 'origin';
-  if (editor.active) editor.updatePivot();
   $('pvOrigin').classList.toggle('active', p === 'origin');
   $('pvSel').classList.toggle('active', p === 'selection');
   navKey = selectionKey();

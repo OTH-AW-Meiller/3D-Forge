@@ -37,7 +37,7 @@ export const SHORTCUTS = [
   { id: 'space', group: 'Transform', label: 'Gizmo: global / local', keys: ['X'], el: '#tSpace' },
   { id: 'snap', group: 'Transform', label: 'Focus snap field', keys: ['G'] },
   // View
-  { id: 'focus', group: 'View', label: 'Center view on pivot', keys: ['F'], el: '#pvFocus' },
+  { id: 'focus', group: 'View', label: 'Center view on orbit center', keys: ['F'], el: '#pvFocus' },
   { id: 'home', group: 'View', label: 'Reset view to initial position', keys: ['Home'], el: '#pvHome' },
   { id: 'pvOrigin', group: 'View', label: 'Orbit around origin', keys: ['O'], el: '#pvOrigin' },
   { id: 'pvSel', group: 'View', label: 'Orbit around selection', keys: ['P'], el: '#pvSel' },
