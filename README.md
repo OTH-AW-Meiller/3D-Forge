@@ -91,6 +91,7 @@ The complete, always up-to-date list is in the app (`?`).
 |------|---------|
 | `index.html` | Layout, styles, menus, dialogs |
 | `main.js` | App logic: modes, toolbar, panels, object list, undo/redo |
+| `icons/` | Editable SVG icons (one file per icon, `stroke` is masked with the button colour) and the logo |
 | `stage.js` | Scene, camera, renderer, orbit controls, grid |
 | `shapes.js` | Parametric primitives |
 | `subedit.js` | Sub-object editor (vertex / edge / face) core |

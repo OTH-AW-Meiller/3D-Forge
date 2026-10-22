@@ -38,7 +38,11 @@
   #status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #8b93a1; pointer-events: none; }
   #toolbar { position: absolute; top: 40px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
   #toolbar button { display: flex; flex-direction: column; align-items: center; width: 74px; padding: 5px 4px; font-size: 11px; }
-  #toolbar button i { font-style: normal; font-size: 18px; line-height: 22px; }
+  .ico { display: inline-block; width: 1em; height: 1em; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; vertical-align: -0.15em; }
+  #toolbar button i { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  #toolbar button i .ico { width: 20px; height: 20px; }
+  #navHome button, #nav button { display: inline-flex; align-items: center; gap: 4px; }
+  #navTools button .ico { width: 20px; height: 20px; }
   #toolbar button:disabled { opacity: .35; cursor: default; }
   #toolbar .sep { height: 1px; background: #4b5262; margin: 2px 0; }
   #toolbar .group { position: relative; }
@@ -78,7 +82,7 @@
   #props.multi .grid3 { opacity: .4; pointer-events: none; }
   #props.disabled { opacity: .4; pointer-events: none; }
   #logoBtn { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 12px 0 10px; background: none; border: none; border-radius: 0; font-weight: 700; letter-spacing: .04em; color: #e8e8f0; }
-  #logoBtn svg { width: 22px; height: 22px; }
+  #logoBtn img { width: 22px; height: 22px; }
   #logoBtn:hover { background: #3a404b; }
   #splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(8, 9, 14, .55); transition: opacity .3s ease; }
   #splash .card { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 340px; padding: 30px 24px 22px; box-sizing: border-box; cursor: pointer;
@@ -91,34 +95,14 @@
   #splash h1 { margin: 0; font-size: 38px; letter-spacing: .06em; font-weight: 800; background: linear-gradient(90deg, #8fb4ff, #b08cff 50%, #ff9a4d); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #splash p { margin: 0; color: #9aa1b5; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; }
   #splash .go { margin-top: 12px; color: #6f7690; font-size: 12px; animation: pulse 1.8s ease-in-out infinite; }
-  #splash .spark { transform-origin: center; animation: spark 2.4s ease-in-out infinite; }
   @keyframes float { 50% { transform: translateY(-8px); } }
   @keyframes pulse { 50% { opacity: .3; } }
-  @keyframes spark { 50% { opacity: .35; } }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="lgTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bcd0ff"/><stop offset="1" stop-color="#8f7cff"/></linearGradient>
-    <linearGradient id="lgLeft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b6cf0"/><stop offset="1" stop-color="#2f2f8f"/></linearGradient>
-    <linearGradient id="lgRight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b46b8"/><stop offset="1" stop-color="#191a55"/></linearGradient>
-    <linearGradient id="lgForge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#ff6a2b"/></linearGradient>
-  </defs>
-  <symbol id="logoMark" viewBox="0 0 100 100">
-    <!-- isometric cube with a chamfered, glowing front edge -->
-    <polygon points="50,6 90,28 50,50 10,28" fill="url(#lgTop)"/>
-    <polygon points="10,28 50,50 50,94 10,72" fill="url(#lgLeft)"/>
-    <polygon points="90,28 50,50 50,94 90,72" fill="url(#lgRight)"/>
-    <polygon points="50,50 56,46.7 56,91 50,94" fill="url(#lgForge)"/>
-    <polygon points="50,50 44,46.7 44,91 50,94" fill="url(#lgForge)" opacity=".85"/>
-    <polyline points="50,6 90,28 90,72 50,94 10,72 10,28 50,6" fill="none" stroke="#e9ecff" stroke-opacity=".55" stroke-width="1.6" stroke-linejoin="round"/>
-    <g class="spark" fill="#ffd27a"><path d="M84 6 l2.2 5.8 5.8 2.2 -5.8 2.2 -2.2 5.8 -2.2 -5.8 -5.8 -2.2 5.8 -2.2z"/></g>
-  </symbol>
-</svg>
 <div id="splash" hidden>
   <div class="card">
-    <svg class="logo"><use href="#logoMark"/></svg>
+    <img class="logo" src="icons/logo.svg" alt="">
     <h1>3DForge</h1>
     <p>Box &amp; mesh modeler</p>
     <p class="ver">Version 0.3</p>
@@ -126,7 +110,7 @@
   </div>
 </div>
 <div id="menubar">
-  <button id="logoBtn" title="About 3DForge"><svg><use href="#logoMark"/></svg><span>3DForge</span><small style="opacity:.55;margin-left:6px;font-size:11px">v0.3</small></button>
+  <button id="logoBtn" title="About 3DForge"><img src="icons/logo.svg" alt=""><span>3DForge</span><small style="opacity:.55;margin-left:6px;font-size:11px">v0.3</small></button>
   <div class="menu" id="mFile">
     <button>File</button>
     <div class="dropdown">
@@ -172,56 +156,56 @@
 </div>
 <div id="view"></div>
 <div id="toolbar">
-  <button id="mSelect" title="Select (1)"><i>↖</i>Select</button>
+  <button id="mSelect" title="Select (1)"><i><span class="ico" style="--icon:url(icons/select.svg)"></span></i>Select</button>
   <div class="group" id="gCreate">
-    <button id="mCreate" title="Create (2–5)"><i>＋</i>Create</button>
+    <button id="mCreate" title="Create (2–5)"><i><span class="ico" style="--icon:url(icons/create.svg)"></span></i>Create</button>
     <div class="flyout">
-      <button data-shape="box" class="active" title="Box (2)"><i>▣</i>Box</button>
-      <button data-shape="sphere" title="Sphere (3)"><i>●</i>Sphere</button>
-      <button data-shape="cylinder" title="Cylinder (4)"><i>⬮</i>Cylinder</button>
-      <button data-shape="tube" title="Tube (5)"><i>◎</i>Tube</button>
+      <button data-shape="box" class="active" title="Box (2)"><i><span class="ico" style="--icon:url(icons/box.svg)"></span></i>Box</button>
+      <button data-shape="sphere" title="Sphere (3)"><i><span class="ico" style="--icon:url(icons/sphere.svg)"></span></i>Sphere</button>
+      <button data-shape="cylinder" title="Cylinder (4)"><i><span class="ico" style="--icon:url(icons/cylinder.svg)"></span></i>Cylinder</button>
+      <button data-shape="tube" title="Tube (5)"><i><span class="ico" style="--icon:url(icons/tube.svg)"></span></i>Tube</button>
     </div>
   </div>
   <div class="group" id="gEdit">
-    <button id="mEdit" title="Sub-object mode (Tab)"><i>✎</i>Edit</button>
+    <button id="mEdit" title="Sub-object mode (Tab)"><i><span class="ico" style="--icon:url(icons/edit.svg)"></span></i>Edit</button>
     <div class="flyout">
-      <button data-sub="vertex" class="active" title="Vertices (1)"><i>◦</i>Vertices</button>
-      <button data-sub="edge" title="Edges (2)"><i>╱</i>Edges</button>
-      <button data-sub="face" title="Faces (3)"><i>◩</i>Faces</button>
+      <button data-sub="vertex" class="active" title="Vertices (1)"><i><span class="ico" style="--icon:url(icons/vertex.svg)"></span></i>Vertices</button>
+      <button data-sub="edge" title="Edges (2)"><i><span class="ico" style="--icon:url(icons/edge.svg)"></span></i>Edges</button>
+      <button data-sub="face" title="Faces (3)"><i><span class="ico" style="--icon:url(icons/face.svg)"></span></i>Faces</button>
       <span class="sep"></span>
-      <button id="subAdd" title="Add (Enter)"><i>＋</i>Add</button>
-      <button id="subDel" title="Remove (Del)"><i>－</i>Remove</button>
-      <button id="subDivide" title="Subdivide selected faces (Catmull-Clark, Shift+D)"><i>▦</i>Subdivide</button>
-      <button id="subChamfer" title="Chamfer selected edges (B)" hidden><i>◢</i>Chamfer</button>
+      <button id="subAdd" title="Add (Enter)"><i><span class="ico" style="--icon:url(icons/add.svg)"></span></i>Add</button>
+      <button id="subDel" title="Remove (Del)"><i><span class="ico" style="--icon:url(icons/remove.svg)"></span></i>Remove</button>
+      <button id="subDivide" title="Subdivide selected faces (Catmull-Clark, Shift+D)"><i><span class="ico" style="--icon:url(icons/subdivide.svg)"></span></i>Subdivide</button>
+      <button id="subChamfer" title="Chamfer selected edges (B)" hidden><i><span class="ico" style="--icon:url(icons/chamfer.svg)"></span></i>Chamfer</button>
     </div>
   </div>
   <span class="sep"></span>
-  <button id="tMove" class="active" title="Move (W)"><i>✥</i>Move</button>
-  <button id="tRot" title="Rotate (E)"><i>⟳</i>Rotate</button>
-  <button id="tScale" title="Scale (R)"><i>⤡</i>Scale</button>
-  <button id="tSpace" class="active" title="Gizmo orientation: global / local (X)"><i>⌖</i><span id="spaceLbl">Local</span></button>
+  <button id="tMove" class="active" title="Move (W)"><i><span class="ico" style="--icon:url(icons/move.svg)"></span></i>Move</button>
+  <button id="tRot" title="Rotate (E)"><i><span class="ico" style="--icon:url(icons/rotate.svg)"></span></i>Rotate</button>
+  <button id="tScale" title="Scale (R)"><i><span class="ico" style="--icon:url(icons/scale.svg)"></span></i>Scale</button>
+  <button id="tSpace" class="active" title="Gizmo orientation: global / local (X)"><i><span class="ico" style="--icon:url(icons/space.svg)"></span></i><span id="spaceLbl">Local</span></button>
   <span class="sep"></span>
-  <button id="dup" title="Duplicate (Ctrl+D)"><i>⧉</i>Duplicate</button>
-  <button id="del" title="Delete (Del)"><i>✕</i>Delete</button>
+  <button id="dup" title="Duplicate (Ctrl+D)"><i><span class="ico" style="--icon:url(icons/dup.svg)"></span></i>Duplicate</button>
+  <button id="del" title="Delete (Del)"><i><span class="ico" style="--icon:url(icons/del.svg)"></span></i>Delete</button>
   <span class="sep"></span>
-  <button id="bool" title="Boolean operation on two selected objects (Shift+B)"><i>⊕</i>Bool</button>
-  <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i>◠</i>Edges</button>
-  <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i>◍</i>Close holes</button>
+  <button id="bool" title="Boolean operation on two selected objects (Shift+B)"><i><span class="ico" style="--icon:url(icons/bool.svg)"></span></i>Bool</button>
+  <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i><span class="ico" style="--icon:url(icons/smooth.svg)"></span></i>Edges</button>
+  <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i><span class="ico" style="--icon:url(icons/holes.svg)"></span></i>Close holes</button>
 </div>
 <div id="status"></div>
 <div id="navWrap">
-<div id="navHome"><button id="pvHome" title="Reset view to the initial position (Home)">⌂ Home</button></div>
+<div id="navHome"><button id="pvHome" title="Reset view to the initial position (Home)"><span class="ico" style="--icon:url(icons/home.svg)"></span>Home</button></div>
 <div id="nav">
   <span>Pivot</span>
   <button id="pvOrigin" title="Orbit around the origin">Origin</button>
   <button id="pvSel" title="Orbit around the selection">Selection</button>
-  <button id="pvFocus" title="Center view on pivot (F)">⌖ Center</button>
+  <button id="pvFocus" title="Center view on pivot (F)"><span class="ico" style="--icon:url(icons/focus.svg)"></span>Center</button>
 </div>
 </div>
 <div id="navTools">
   <canvas id="navGizmo" title="Click an axis to snap the view, drag to orbit"></canvas>
-  <button id="navZoom" title="Drag up/down to zoom">🔍</button>
-  <button id="navPan" title="Drag to pan the view">✋</button>
+  <button id="navZoom" title="Drag up/down to zoom"><span class="ico" style="--icon:url(icons/zoom.svg)"></span></button>
+  <button id="navPan" title="Drag to pan the view"><span class="ico" style="--icon:url(icons/pan.svg)"></span></button>
 </div>
 <div id="panel">
   <h3>Grid</h3>
