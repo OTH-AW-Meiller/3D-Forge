@@ -7,6 +7,7 @@ export class MirrorMethods {
 
   setMirror(axis, on) {
     this.mirror[axis] = on;
+    this.refreshMirrorPlanes();
     if (this.active) this.refreshSelection(false);
   }
 

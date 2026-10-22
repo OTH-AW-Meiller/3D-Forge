@@ -44,6 +44,7 @@ export const SHORTCUTS = [
   { id: 'subAdd', group: 'Edit mode', label: 'Add', keys: ['Enter'], when: 'edit', el: '#subAdd' },
   { id: 'subDel', group: 'Edit mode', label: 'Remove', keys: ['Del', 'Backspace'], when: 'edit', el: '#subDel' },
   { id: 'chamfer', group: 'Edit mode', label: 'Chamfer selected edges', keys: ['B'], when: 'edit', el: '#subChamfer' },
+  { id: 'subdivide', group: 'Edit mode', label: 'Subdivide (Catmull-Clark)', keys: ['Shift+D'], when: 'edit', el: '#subDivide' },
   { id: 'chamferDown', group: 'Edit mode', label: 'Decrease chamfer width', keys: ['['], when: 'edit' },
   { id: 'chamferUp', group: 'Edit mode', label: 'Increase chamfer width', keys: [']'], when: 'edit' },
   { id: 'mirrorX', group: 'Edit mode', label: 'Toggle mirror X', keys: ['Shift+X'], when: 'edit' },

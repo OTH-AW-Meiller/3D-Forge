@@ -193,6 +193,12 @@ function subChamfer() {
   if (editor.chamferEdges(parseFloat($('chamferW').value))) commit();
   updateToolbar();
 }
+function subDivide() {
+  if (mode !== 'edit' || !editor.canSubdivide()) return;
+  if (editor.subdivide()) commit();
+  updateToolbar();
+}
+$('subDivide').onclick = subDivide;
 $('subChamfer').onclick = subChamfer;
 $('subAdd').onclick = subAdd;
 $('subDel').onclick = subDel;
@@ -217,6 +223,7 @@ function updateToolbar() {
   document.querySelectorAll('[data-sub]').forEach(b => b.disabled = !editing);
   $('subAdd').disabled = !editing || !editor.canAdd();
   $('subDel').disabled = !editing || !editor.canRemove();
+  $('subDivide').disabled = !editing || !editor.canSubdivide();
   $('subChamfer').hidden = !editing || editor.kind !== 'edge';
   $('chamferRow').hidden = $('subChamfer').hidden;
   $('subChamfer').disabled = !editing || !editor.canChamfer();
@@ -389,7 +396,7 @@ setupShortcuts({
   pvOrigin: () => setPivotMode('origin'), pvSel: () => setPivotMode('selection'),
   vertex: () => setSub('vertex'), edge: () => setSub('edge'), face: () => setSub('face'),
   selectAll: () => editor.selectAll(),
-  subAdd, subDel, chamfer: subChamfer,
+  subAdd, subDel, chamfer: subChamfer, subdivide: subDivide,
   chamferDown: () => stepChamfer(-1), chamferUp: () => stepChamfer(1),
   mirrorX: () => toggleMirror('x'), mirrorY: () => toggleMirror('y'), mirrorZ: () => toggleMirror('z'),
   faceColor: () => { if ($('faceColRow').hidden) return false; $('fcol').click(); },

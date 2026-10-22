@@ -1,5 +1,5 @@
 // Sub-object editor (vertices / edges / faces): overlays, selection, picking and gizmo transforms.
-// Operations live in mixin files: edit-topology.js (add/remove), edit-mirror.js, edit-chamfer.js, edit-extrude.js.
+// Operations live in mixin files: edit-topology.js (add/remove), edit-mirror.js, edit-chamfer.js, edit-extrude.js, edit-subdivide.js.
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
@@ -9,6 +9,7 @@ import { MirrorMethods } from './edit-mirror.js';
 import { TopologyMethods } from './edit-topology.js';
 import { ChamferMethods } from './edit-chamfer.js';
 import { ExtrudeMethods } from './edit-extrude.js';
+import { SubdivideMethods } from './edit-subdivide.js';
 
 // Re-exported so callers only need this module
 export { createGeometry, applyColors, outlineGeometry };
@@ -130,6 +131,18 @@ export class SubObjectEditor {
     const m = this.model;
     this.group = new THREE.Group();
     const mk = (obj, order) => { obj.frustumCulled = false; obj.raycast = noRaycast; obj.renderOrder = order; this.group.add(obj); return obj; };
+    this.mirrorPlanes = {};
+    for (const [axis, color, rotation] of [
+      ['x', 0xff4f64, [0, Math.PI / 2, 0]],
+      ['y', 0x57d58a, [Math.PI / 2, 0, 0]],
+      ['z', 0x4f9fff, [0, 0, 0]],
+    ]) {
+      const plane = mk(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
+      })), 0);
+      plane.rotation.set(...rotation);
+      this.mirrorPlanes[axis] = plane;
+    }
     this.edgeLines = mk(new THREE.LineSegments(new THREE.BufferGeometry(),
       new THREE.LineBasicMaterial({ color: 0x14161a, transparent: true, opacity: 0.85 })), 1);
     this.vertPoints = mk(new THREE.Points(new THREE.BufferGeometry(),
@@ -144,14 +157,28 @@ export class SubObjectEditor {
       new THREE.PointsMaterial({ color: ORANGE, size: 9, sizeAttenuation: false, depthTest: false })), 5);
     this.edgeLines.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(m.edges.length * 6), 3));
     this.vertPoints.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(m.verts.length), 3));
+    this.refreshMirrorPlanes();
     this.refreshGeometryOverlays();
     this.mesh.add(this.group);
+  }
+
+  refreshMirrorPlanes() {
+    if (!this.mirrorPlanes) return;
+    let extent = 0;
+    for (let i = 0; i < this.model.verts.length; i++) extent = Math.max(extent, Math.abs(this.model.verts[i]));
+    const size = Math.max(2, extent * 2.2);
+    for (const axis of ['x', 'y', 'z']) {
+      const plane = this.mirrorPlanes[axis];
+      plane.visible = this.mirror[axis];
+      plane.scale.set(size, size, 1);
+    }
   }
 
   disposeOverlays() {
     this.mesh.remove(this.group);
     this.group.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
     this.group = null;
+    this.mirrorPlanes = null;
   }
 
   refreshGeometryOverlays() {
@@ -344,6 +371,7 @@ export class SubObjectEditor {
     g.getAttribute('normal').needsUpdate = true;
     g.computeBoundingSphere();
     g.computeBoundingBox();
+    this.refreshMirrorPlanes();
     this.refreshGeometryOverlays();
     this.refreshSelection(false);
   }
@@ -419,7 +447,7 @@ export class SubObjectEditor {
 }
 
 // The editor is split over several files; copy their methods onto the class
-for (const Mixin of [MirrorMethods, TopologyMethods, ChamferMethods, ExtrudeMethods]) {
+for (const Mixin of [MirrorMethods, TopologyMethods, ChamferMethods, ExtrudeMethods, SubdivideMethods]) {
   for (const name of Object.getOwnPropertyNames(Mixin.prototype)) {
     if (name !== 'constructor') Object.defineProperty(SubObjectEditor.prototype, name, Object.getOwnPropertyDescriptor(Mixin.prototype, name));
   }

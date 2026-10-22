@@ -39,7 +39,8 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 - **Remove**: delete vertices, edges (merging faces) or faces
 - **Connect** boundary points of the same face
 - **Chamfer** selected edges with adjustable width
-- **Mirror** on X, Y and/or Z so edits are applied to both sides
+- **Subdivide** the selected faces with Catmull-Clark subdivision surfaces (one level per click, `Shift+D`; disabled without a face selection)
+- **Mirror** on X, Y and/or Z so edits are applied to both sides; enabled mirror planes are shown in the viewport
 - Per-face colours (with reset to the object colour)
 - Added edges are always visible; Add / Remove / Chamfer are disabled when not applicable
 
@@ -89,7 +90,7 @@ The complete, always up-to-date list is in the app (`?`).
 | `shapes.js` | Parametric primitives |
 | `subedit.js` | Sub-object editor (vertex / edge / face) core |
 | `model.js`, `polygon.js` | Editable mesh model and polygon helpers |
-| `edit-mirror.js`, `edit-topology.js`, `edit-chamfer.js`, `edit-extrude.js` | Editor features, mixed into the editor |
+| `edit-mirror.js`, `edit-topology.js`, `edit-chamfer.js`, `edit-extrude.js`, `edit-subdivide.js` | Editor features, mixed into the editor |
 | `io.js` | Import / export, including a minimal 3DS reader/writer |
 | `shortcuts.js` | Shortcut registry, tooltips and shortcut table |
 | `splash.js` | Splash screen |

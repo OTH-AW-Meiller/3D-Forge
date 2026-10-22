@@ -182,6 +182,7 @@
       <span class="sep"></span>
       <button id="subAdd" title="Add (Enter)"><i>＋</i>Add</button>
       <button id="subDel" title="Remove (Del)"><i>－</i>Remove</button>
+      <button id="subDivide" title="Subdivide selected faces (Catmull-Clark, Shift+D)"><i>▦</i>Subdivide</button>
       <button id="subChamfer" title="Chamfer selected edges (B)" hidden><i>◢</i>Chamfer</button>
     </div>
   </div>
@@ -260,6 +261,7 @@
     <b>Faces – Add:</b> Enter extrudes the selected faces.<br>
     <b>Remove (Del):</b> deletes selected vertices, edges (merges the faces) or faces. Disabled while nothing is selected.<br>
     <b>Chamfer (B):</b> bevels the selected edges; the width is set in the panel. Only edges between two faces are chamfered; faces with holes or interior points are rejected.<br>
+    <b>Subdivide (Shift+D):</b> refines the selected faces (and their mirrored counterparts) with Catmull-Clark subdivision. Only available in face mode with faces selected; the new faces stay selected so it can be repeated. Edges to unselected faces keep their shape.<br>
     <b>Mirror X / Y / Z</b> (panel): repeats every edit on the opposite side of the object's local plane. Several axes can be combined. With Faces – Add only the edited side stays selected.<br>
     <b>Face colour:</b> with faces selected, the panel shows a colour field for just those faces (Reset restores the object colour).<br>
     Selected edges are drawn as thick orange lines.
