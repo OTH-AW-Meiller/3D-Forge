@@ -25,8 +25,9 @@
   input[type=number] { width: 100%; box-sizing: border-box; background: #1e2127; color: #ddd; border: 1px solid #4b5262; border-radius: 3px; padding: 3px; }
   input[type=color] { width: 44px; height: 26px; padding: 0; border: none; background: none; }
   .hint { font-size: 12px; color: #8b93a1; line-height: 1.5; }
-  #nav { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; font-size: 12px; color: #8b93a1; }
-  #nav button { padding: 4px 8px; font-size: 12px; }
+  #navWrap { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 6px; z-index: 2; }
+  #nav, #navHome { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; font-size: 12px; color: #8b93a1; }
+  #nav button, #navHome button { padding: 4px 8px; font-size: 12px; }
   #status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #8b93a1; pointer-events: none; }
   #toolbar { position: absolute; top: 40px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
   #toolbar button { display: flex; flex-direction: column; align-items: center; width: 74px; padding: 5px 4px; font-size: 11px; }
@@ -196,11 +197,14 @@
   <button id="del" title="Delete (Del)"><i>✕</i>Delete</button>
 </div>
 <div id="status"></div>
+<div id="navWrap">
+<div id="navHome"><button id="pvHome" title="Reset view to the initial position (Home)">⌂ Home</button></div>
 <div id="nav">
   <span>Pivot</span>
   <button id="pvOrigin" title="Orbit around the origin">Origin</button>
   <button id="pvSel" title="Orbit around the selection">Selection</button>
   <button id="pvFocus" title="Center view on pivot (F)">⌖ Center</button>
+</div>
 </div>
 <div id="panel">
   <h3>Grid</h3>

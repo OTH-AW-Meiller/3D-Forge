@@ -392,7 +392,7 @@ setupShortcuts({
   move: () => setTool('translate'), rotate: () => setTool('rotate'), scale: () => setTool('scale'),
   space: () => setSpace(gizmo.space === 'local' ? 'world' : 'local'),
   snap: () => { $('snap').focus(); $('snap').select(); },
-  focus: focusPivot,
+  focus: focusPivot, home: homeView,
   pvOrigin: () => setPivotMode('origin'), pvSel: () => setPivotMode('selection'),
   vertex: () => setSub('vertex'), edge: () => setSub('edge'), face: () => setSub('face'),
   selectAll: () => editor.selectAll(),
@@ -511,6 +511,14 @@ function setPivotMode(p) {
 $('pvOrigin').onclick = () => setPivotMode('origin');
 $('pvSel').onclick = () => setPivotMode('selection');
 $('pvFocus').onclick = focusPivot;
+function homeView() {
+  navGoal = null;
+  camera.position.set(6, 5, 8);
+  orbit.target.set(0, 0.5, 0);
+  camera.up.set(0, 1, 0);
+  orbit.update();
+}
+$('pvHome').onclick = homeView;
 // In select mode the pivot follows selection changes
 // Object list
 const listEl = $('objList');

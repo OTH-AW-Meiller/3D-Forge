@@ -34,6 +34,7 @@ export const SHORTCUTS = [
   { id: 'snap', group: 'Transform', label: 'Focus snap field', keys: ['G'] },
   // View
   { id: 'focus', group: 'View', label: 'Center view on pivot', keys: ['F'], el: '#pvFocus' },
+  { id: 'home', group: 'View', label: 'Reset view to initial position', keys: ['Home'], el: '#pvHome' },
   { id: 'pvOrigin', group: 'View', label: 'Orbit around origin', keys: ['O'], el: '#pvOrigin' },
   { id: 'pvSel', group: 'View', label: 'Orbit around selection', keys: ['P'], el: '#pvSel' },
   // Edit mode
