@@ -3,6 +3,7 @@
 // subedit.js (vertex/edge/face editor).
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SubObjectEditor, createGeometry, applyColors, outlineGeometry } from './subedit.js';
 import { createStage } from './stage.js';
 import { booleanOp, fillHoles } from './csg.js';
@@ -46,7 +47,7 @@ function uniqueName(base) {
   for (let i = 1; ; i++) if (!used.has(`${base} ${i}`)) return `${base} ${i}`;
 }
 
-function addBox({ position, size, color, rotation, type = 'box', params, positions, faces, faceColors, name }) {
+function addBox({ position, size, color, rotation, type = 'box', params, positions, faces, faceColors, name, hidden, locked }) {
   if (!SHAPES[type]) type = 'box';
   params = normalizeParams(type, params);
   let geo, edges, model = null;
@@ -74,8 +75,68 @@ function addBox({ position, size, color, rotation, type = 'box', params, positio
   mesh.castShadow = mesh.receiveShadow = true;
   scene.add(mesh);
   boxes.push(mesh);
+  mesh.userData.hidden = !!hidden;
+  mesh.userData.locked = !!locked;
+  mesh.visible = !hidden;
+  if (shading !== 'standard') applyShading(mesh);
   return mesh;
 }
+
+// Shading modes: standard (translucent edges), edges (solid edges), rendered (no edges), better (glossy + environment light, no edges)
+let shading = 'standard';
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+function applyShading(mesh) {
+  const mat = mesh.material, ol = mesh.userData.outline;
+  const better = shading === 'better';
+  mat.roughness = better ? 0.3 : 0.6;
+  mat.metalness = better ? 0.15 : 0;
+  mat.envMapIntensity = better ? 0.8 : 1;
+  mat.needsUpdate = true;
+  if (ol) {
+    ol.material.visible = shading === 'standard' || shading === 'edges';
+    ol.material.opacity = shading === 'edges' ? 1 : 0.5;
+    // Edges mode also shows the hidden edges behind faces
+    ol.material.depthTest = shading !== 'edges';
+    ol.renderOrder = shading === 'edges' ? 1 : 0;
+    ol.material.needsUpdate = true;
+    // Edges mode also shows the triangle lines, slightly lighter than the edges
+    let wire = ol.userData.wire;
+    if (shading === 'edges') {
+      if (!wire) {
+        wire = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x666666, depthTest: false, transparent: true, opacity: 0.8 }));
+        ol.userData.wire = wire;
+        ol.add(wire);
+      }
+      wire.geometry.dispose();
+      wire.geometry = new THREE.WireframeGeometry(mesh.geometry);
+    } else if (wire) {
+      wire.geometry.dispose();
+      ol.remove(wire);
+      delete ol.userData.wire;
+    }
+    // Primitives normally hide smooth edges (<30°); Edges mode shows every non-coplanar edge
+    if (!mesh.userData.model) {
+      if (shading === 'edges') {
+        if (!ol.userData.std) ol.userData.std = ol.geometry;
+        ol.geometry = new THREE.EdgesGeometry(mesh.geometry, 1);
+      } else if (ol.userData.std) {
+        ol.geometry.dispose();
+        ol.geometry = ol.userData.std;
+        delete ol.userData.std;
+      }
+    }
+  }
+}
+
+function setShading(mode) {
+  shading = mode;
+  scene.environment = mode === 'better' ? envMap : null;
+  boxes.forEach(applyShading);
+  document.querySelectorAll('[data-shading]').forEach(b => b.classList.toggle('active', b.dataset.shading === mode));
+}
+document.querySelectorAll('[data-shading]').forEach(b => b.addEventListener('click', () => setShading(b.dataset.shading)));
 
 // Shape parameters (remembered per shape) and the placement preview
 const shapeParams = Object.fromEntries(Object.keys(SHAPES).map(t => [t, defaultParams(t)]));
@@ -125,7 +186,7 @@ function setPointer(e) {
 function placementAt(e) {
   setPointer(e);
   const size = ghostSize;
-  const hit = raycaster.intersectObjects([...boxes, ground], false)[0];
+  const hit = raycaster.intersectObjects([...boxes.filter(m => m.visible), ground], false)[0];
   if (!hit) return null;
   const p = new THREE.Vector3();
   if (hit.object === ground) {
@@ -176,8 +237,12 @@ gizmo.addEventListener('dragging-changed', e => {
   else { selection.forEach(m => scene.attach(m)); attachGizmo(); }
 });
 
+// Hidden or locked objects cannot be picked or selected
+const isPickable = m => m.visible && !m.userData.locked;
+
 // additive = toggle the object in the current selection
 function select(mesh, additive = false) {
+  if (mesh && !isPickable(mesh)) mesh = null;
   selection.forEach(m => m.material.emissive.setHex(0x000000));
   if (additive && mesh) {
     const i = selection.indexOf(mesh);
@@ -212,6 +277,7 @@ function setMode(m) {
   if (m === 'edit' && selection.length !== 1) return;
   if (mode === 'edit' && m !== 'edit') {
     editor.exit();
+    if (shading === 'edges') boxes.forEach(applyShading);
     attachGizmo();
     if (pivotBeforeEdit) setPivotMode(pivotBeforeEdit);
     pivotBeforeEdit = null;
@@ -386,7 +452,7 @@ function duplicateSelected() {
   if (!selected || mode === 'edit') return;
   const copies = selection.map(s => addBox({ position: s.position.clone().add(new THREE.Vector3(+$('snap').value || 0.5, 0, 0)),
     size: s.scale.clone(), color: s.userData.baseColor.clone(), rotation: [s.rotation.x, s.rotation.y, s.rotation.z], type: s.userData.type, params: { ...s.userData.params },
-    positions: s.userData.model?.positions, faces: s.userData.model?.faceOfTri, faceColors: s.userData.model?.faceColors, name: s.userData.name }));
+    positions: s.userData.model?.positions, faces: s.userData.model?.faceOfTri, faceColors: s.userData.model?.faceColors, name: s.userData.name, hidden: s.userData.hidden, locked: s.userData.locked }));
   select(null);
   copies.forEach(c => select(c, true));
   commit();
@@ -578,7 +644,7 @@ dom.addEventListener('pointerup', e => {
     }
   } else {
     setPointer(e);
-    const hit = raycaster.intersectObjects(boxes, false)[0];
+    const hit = raycaster.intersectObjects(boxes.filter(isPickable), false)[0];
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
     if (hit || !additive) select(hit ? hit.object : null, additive);
   }
@@ -587,10 +653,11 @@ dom.addEventListener('pointerup', e => {
 // Keyboard shortcuts: the key table lives in shortcuts.js, this maps action ids to app functions
 const clickEl = sel => document.querySelector(sel).click();
 const stepSelection = d => {
-  if (!boxes.length) return;
-  const i = boxes.indexOf(selected);
+  const list = boxes.filter(isPickable);
+  if (!list.length) return;
+  const i = list.indexOf(selected);
   if (mode === 'place') setMode('select');
-  select(boxes[i < 0 ? (d > 0 ? 0 : boxes.length - 1) : (i + d + boxes.length) % boxes.length]);
+  select(list[i < 0 ? (d > 0 ? 0 : list.length - 1) : (i + d + list.length) % list.length]);
 };
 const toggleMirror = a => { const c = document.querySelector(`[data-mirror=${a}]`); c.checked = !c.checked; c.dispatchEvent(new Event('change')); };
 const stepChamfer = d => { const w = $('chamferW'); w.value = Math.max(0.01, round(parseFloat(w.value || 0.1) + d * 0.05)); };
@@ -665,6 +732,7 @@ function snapshot() {
     return {
       name: m.userData.name, position: m.position.toArray(), size: m.scale.toArray(), rotation: [m.rotation.x, m.rotation.y, m.rotation.z],
       color: baseHex(m), type: m.userData.type, params: { ...m.userData.params },
+      ...(m.userData.hidden && { hidden: true }), ...(m.userData.locked && { locked: true }),
       ...(m.userData.custom && (!ed || editor.changed || editor.wasCustom) && { positions: Array.from(m.userData.model.positions), faces: Array.from(m.userData.model.faceOfTri), ...(m.userData.model.faceColors.size && { faceColors: [...m.userData.model.faceColors] }) }),
     };
   });
@@ -686,7 +754,7 @@ function restore(json) {
   const idx = selection.map(m => boxes.indexOf(m));
   clearAll();
   for (const b of JSON.parse(json)) addBox({ position: new THREE.Vector3(...b.position), size: new THREE.Vector3(...b.size),
-    color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name });
+    color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name, hidden: b.hidden, locked: b.locked });
   if (mode !== 'place') {
     idx.filter(i => boxes[i]).forEach(i => select(boxes[i], true));
     if (wasEdit) setMode('edit');
@@ -733,8 +801,7 @@ function setPivotMode(p) {
   if (editor.active) editor.updatePivot();
   $('pvOrigin').classList.toggle('active', p === 'origin');
   $('pvSel').classList.toggle('active', p === 'selection');
-  navKey = '';
-  focusPivot();
+  navKey = selectionKey();
 }
 $('pvOrigin').onclick = () => setPivotMode('origin');
 $('pvSel').onclick = () => setPivotMode('selection');
@@ -753,8 +820,15 @@ setupNavGizmo({ canvas: $('navGizmo'), zoomBtn: $('navZoom'), panBtn: $('navPan'
 // Object list
 const listEl = $('objList');
 let listKey = '';
+function toggleFlag(m, key) {
+  if (mode === 'edit') return;
+  m.userData[key] = !m.userData[key];
+  m.visible = !m.userData.hidden;
+  if (!isPickable(m) && selection.includes(m)) select(m, true);
+  commit();
+}
 function syncList() {
-  const key = boxes.map(b => b.userData.name).join('\n');
+  const key = boxes.map(b => b.userData.name + (b.userData.hidden ? '|h' : '') + (b.userData.locked ? '|l' : '')).join('\n');
   if (key === listKey && listEl.children.length === boxes.length) {
     boxes.forEach((b, i) => listEl.children[i].classList.toggle('sel', selection.includes(b)));
     listEl.querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
@@ -765,7 +839,7 @@ function syncList() {
   const top = listEl.scrollTop;
   listEl.replaceChildren(...boxes.map(m => {
     const row = document.createElement('div');
-    row.className = 'objRow' + (selection.includes(m) ? ' sel' : '');
+    row.className = 'objRow' + (selection.includes(m) ? ' sel' : '') + (m.userData.hidden || m.userData.locked ? ' off' : '');
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.value = m.userData.name;
@@ -784,18 +858,30 @@ function syncList() {
       if (v && v !== m.userData.name) { m.userData.name = ''; m.userData.name = uniqueName(v); commit(); }
       inp.value = m.userData.name;
     };
-    row.append(inp);
+    const flag = (key, icons, title) => {
+      const b = document.createElement('button');
+      b.className = 'objFlag' + (m.userData[key] ? ' on' : '');
+      b.title = title;
+      b.innerHTML = `<span class="ico" style="--icon:url(icons/${icons[m.userData[key] ? 1 : 0]}.svg)"></span>`;
+      b.onclick = e => { e.stopPropagation(); toggleFlag(m, key); };
+      return b;
+    };
+    row.append(inp, flag('hidden', ['eye', 'eye-off'], 'Show / hide object'), flag('locked', ['unlock', 'lock'], 'Lock / unlock object (not selectable)'));
     return row;
   }));
   listEl.scrollTop = top;
   listEl.querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
 }
+function selectionKey() {
+  let key = selection.map(m => m.uuid).join(',');
+  if (editor.active) key += '|' + editor.kind + [...editor.selV, ...editor.selE, ...editor.selF].join(',');
+  return key;
+}
 function trackSelection() {
   syncList();
   syncEditPanel();
   if (pivotMode !== 'selection' || gizmo.dragging) return;
-  let key = selection.map(m => m.uuid).join(',');
-  if (editor.active) key += '|' + editor.kind + [...editor.selV, ...editor.selE, ...editor.selF].join(',');
+  const key = selectionKey();
   if (key === navKey) return;
   navKey = key;
   focusPivot();

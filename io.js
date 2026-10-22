@@ -121,6 +121,7 @@ export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex,
     const data = boxes.map(m => ({
       name: m.userData.name, position: m.position.toArray().map(round), size: m.scale.toArray().map(round),
       rotation: [m.rotation.x, m.rotation.y, m.rotation.z].map(round), color: baseHex(m), type: m.userData.type, params: m.userData.params,
+      ...(m.userData.hidden && { hidden: true }), ...(m.userData.locked && { locked: true }),
       ...(m.userData.custom && { positions: Array.from(m.userData.model.positions, v => Math.round(v * 1e4) / 1e4), faces: Array.from(m.userData.model.faceOfTri) }),
       ...(m.userData.model?.faceColors.size && { faceColors: [...m.userData.model.faceColors] })
     }));
@@ -248,7 +249,7 @@ export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex,
         const data = JSON.parse(await f.text());
         clearAll();
         for (const b of data) addBox({ position: new THREE.Vector3(...b.position), size: new THREE.Vector3(...b.size),
-          color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name });
+          color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name, hidden: b.hidden, locked: b.locked });
         commit();
       }
     } catch (err) { alert('Import failed: ' + (err.message || 'Invalid file')); }

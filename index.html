@@ -12,10 +12,14 @@
   h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #8b93a1; }
   #objList { display: flex; flex-direction: column; gap: 2px; min-height: 80px; max-height: 260px; overflow-y: auto; border: 1px solid #3a3f4b; border-radius: 4px; padding: 2px; background: #22252b; }
   #objList:empty::before { content: 'No objects'; color: #6b7280; font-size: 12px; text-align: center; padding: 28px 0; }
-  .objRow { border-radius: 3px; border: 1px solid transparent; cursor: pointer; }
+  .objRow { display: flex; align-items: center; border-radius: 3px; border: 1px solid transparent; cursor: pointer; }
   .objRow:hover { background: #2f343e; }
   .objRow.sel { background: #3b3f8f; border-color: #7a6cf0; }
-  .objRow input { width: 100%; box-sizing: border-box; background: transparent; color: #ddd; border: 0; padding: 4px 6px; font: inherit; cursor: pointer; outline: none; }
+  .objFlag { flex: none; width: 24px; height: 24px; padding: 0; margin-right: 2px; background: none; border: none; color: #8b93a1; }
+  .objFlag:hover { background: #3a404b; color: #fff; }
+  .objFlag.on { color: #e5a44a; }
+  .objRow.off input { opacity: .5; }
+  .objRow input { flex: 1; min-width: 0; width: 100%; box-sizing: border-box; background: transparent; color: #ddd; border: 0; padding: 4px 6px; font: inherit; cursor: pointer; outline: none; }
   .objRow input:not([readonly]) { background: #1e2127; cursor: text; outline: 1px solid #7a6cf0; }
   h3:first-child { margin-top: 0; }
   /* separators between the option groups */
@@ -144,6 +148,14 @@
     <div class="dropdown">
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
+    </div>
+  </div>
+  <div class="menu" id="mViewport">
+    <button>Viewport</button>
+    <div class="dropdown">
+      <button data-shading="standard" class="active" title="Standard: edges drawn semi-transparent">Standard</button>
+      <button data-shading="edges" title="Always show all edges and triangle lines">Edges</button>
+      <button data-shading="better" title="Rendered: glossy material with environment lighting, no edges">Rendered</button>
     </div>
   </div>
   <div class="menu" id="mHelp">
