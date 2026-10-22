@@ -411,31 +411,37 @@ export class SubObjectEditor {
         sy[i] = (-p.y * 0.5 + 0.5) * rect.height;
         ok[i] = p.z > -1 && p.z < 1 ? 1 : 0;
       }
-      const cands = [];
-      if (this.kind === 'vertex' || this.kind === 'edge') {
-        for (let i = 0; i < m.nVerts; i++) {
-          if (!ok[i]) continue;
-          const d = Math.hypot(sx[i] - mx, sy[i] - my);
-          if (d < 10) cands.push({ d, id: i, t: 0, a: i, b: i });
+      const q = new THREE.Vector3(), r = new THREE.Vector3();
+      // Nearest candidate that is really visible (not hidden behind the surface)
+      const firstVisible = cands => {
+        cands.sort((a, b) => a.d - b.d);
+        for (const c of cands.slice(0, 40)) {
+          q.fromArray(m.verts, 3 * c.a);
+          r.fromArray(m.verts, 3 * c.b);
+          q.lerp(r, c.t).applyMatrix4(mesh.matrixWorld);
+          if (this.isVisible(q)) return c.id;
         }
+        return null;
+      };
+      const vc = [];
+      for (let i = 0; i < m.nVerts; i++) {
+        if (!ok[i]) continue;
+        const d = Math.hypot(sx[i] - mx, sy[i] - my);
+        if (d < 10) vc.push({ d, id: i, t: 0, a: i, b: i });
       }
-      if (this.kind === 'edge' && !cands.length) {
+      id = firstVisible(vc);
+      // Edge mode: fall back to edges when no visible vertex is close (hidden vertices must not block edges)
+      if (id === null && this.kind === 'edge') {
+        const ec = [];
         for (const ed of m.edges) {
           if (!ok[ed.a] || !ok[ed.b]) continue;
           const dx = sx[ed.b] - sx[ed.a], dy = sy[ed.b] - sy[ed.a];
           const l2 = dx * dx + dy * dy || 1;
           const t = Math.max(0, Math.min(1, ((mx - sx[ed.a]) * dx + (my - sy[ed.a]) * dy) / l2));
           const d = Math.hypot(sx[ed.a] + t * dx - mx, sy[ed.a] + t * dy - my);
-          if (d < 8) cands.push({ d, id: ed.key, t, a: ed.a, b: ed.b });
+          if (d < 8) ec.push({ d, id: ed.key, t, a: ed.a, b: ed.b });
         }
-      }
-      cands.sort((a, b) => a.d - b.d);
-      const q = new THREE.Vector3(), r = new THREE.Vector3();
-      for (const c of cands.slice(0, 25)) {
-        q.fromArray(m.verts, 3 * c.a);
-        r.fromArray(m.verts, 3 * c.b);
-        q.lerp(r, c.t).applyMatrix4(mesh.matrixWorld);
-        if (this.isVisible(q)) { id = c.id; break; }
+        id = firstVisible(ec);
       }
     }
 

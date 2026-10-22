@@ -9,6 +9,7 @@ import { createStage } from './stage.js';
 import { booleanOp, fillHoles } from './csg.js';
 import { Model, nonIndexedPositions as nonIdx, edgeKey } from './model.js';
 import { nonIndexedPositions } from './model.js';
+import { remesh, skinOnly } from './remesh.js';
 import { setupIO } from './io.js';
 import { setupShortcuts } from './shortcuts.js';
 import { SHAPES, defaultParams, normalizeParams, buildShape } from './shapes.js';
@@ -24,7 +25,7 @@ const gizmo = new TransformControls(camera, renderer.domElement);
 gizmo.setSpace('local');
 scene.add(gizmo);
 const editor = new SubObjectEditor({ camera, dom: renderer.domElement, gizmo, scene, snap: v => snapV(v) });
-editor.onSelectionChange = () => updateToolbar();
+editor.onSelectionChange = () => { updateToolbar(); syncGizmoForModifier(); };
 editor.onMessage = msg => { $('status').textContent = msg; setTimeout(() => { $('status').textContent = `${boxes.length} objects`; }, 2500); };
 gizmo.addEventListener('dragging-changed', e => orbit.enabled = !e.value);
 gizmo.addEventListener('objectChange', () => { if (editor.active) return; applySnapToSelection(); syncPanel(); });
@@ -216,9 +217,20 @@ selFrame.renderOrder = 10;
 selFrame.visible = false;
 scene.add(selFrame);
 let modifierHeld = false;
+let tool = 'translate'; // select | translate | rotate | scale; 'select' hides the gizmo
+let toolBeforeModifier = null;
 function syncGizmoForModifier(e) {
   if (e) modifierHeld = !!(e.shiftKey || e.ctrlKey || e.metaKey);
-  const hide = !gizmo.object || (mode === 'edit' && modifierHeld && !gizmo.dragging);
+  // In edit mode a held modifier (multi-select) temporarily switches to the Select tool
+  if (mode === 'edit' && modifierHeld && tool !== 'select' && !gizmo.dragging) {
+    toolBeforeModifier = tool;
+    setTool('select', true);
+  } else if (toolBeforeModifier && !(mode === 'edit' && modifierHeld) && !gizmo.dragging) {
+    const prev = toolBeforeModifier;
+    toolBeforeModifier = null;
+    setTool(prev, true);
+  }
+  const hide = !gizmo.object || tool === 'select' || (mode === 'edit' && modifierHeld && !gizmo.dragging);
   gizmo.enabled = !hide;
   gizmo.visible = !hide;
 }
@@ -281,6 +293,7 @@ function applySnapToSelection() {
 }
 
 let pivotBeforeEdit = null;
+let selectionBeforePlace = [];
 function setMode(m) {
   if (m === 'edit' && selection.length !== 1) return;
   if (mode === 'edit' && m !== 'edit') {
@@ -290,14 +303,20 @@ function setMode(m) {
     if (pivotBeforeEdit) setPivotMode(pivotBeforeEdit);
     pivotBeforeEdit = null;
   }
+  const wasPlace = mode === 'place';
+  if (m === 'place' && !wasPlace) selectionBeforePlace = selection.slice();
   mode = m;
+  if (wasPlace && m === 'select') {
+    const prev = selectionBeforePlace.filter(b => boxes.includes(b));
+    selectionBeforePlace = [];
+    if (!selection.length) prev.forEach(b => select(b, true));
+  }
   if (m === 'edit') {
     gizmo.detach();
     editor.enter(selected);
     pivotBeforeEdit = pivotMode;
     setPivotMode('selection');
   }
-  $('mSelect').classList.toggle('active', m === 'select');
   $('mCreate').classList.toggle('active', m === 'place');
   $('secCreate').hidden = m !== 'place';
   $('secSel').hidden = m === 'place';
@@ -338,7 +357,7 @@ function setShape(t) {
   setMode('place');
 }
 document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => setShape(b.dataset.shape));
-$('mSelect').onclick = () => setMode('select');
+$('mSelect').onclick = selectTool;
 // Tools flyout: toggled by its button, closed by clicking elsewhere
 $('mTools').onclick = e => {
   e.stopPropagation();
@@ -358,6 +377,15 @@ function updateToolbar() {
   $('bool').disabled = !canBool();
   $('bool').classList.toggle('active', boolOpen);
   $('boolRow').hidden = !boolOpen;
+  $('mergeBtn').disabled = !canMerge();
+  if (!canSmooth()) remeshOpen = false;
+  $('remeshBtn').disabled = !canSmooth();
+  $('remeshBtn').classList.toggle('active', remeshOpen);
+  $('remeshRow').hidden = !remeshOpen;
+  if (!canSmooth()) arrayOpen = false;
+  $('arrayBtn').disabled = !canSmooth();
+  $('arrayBtn').classList.toggle('active', arrayOpen);
+  $('arrayRow').hidden = !arrayOpen;
   if (!canSmooth()) smoothOpen = false;
   $('smooth').disabled = !canSmooth();
   $('closeHoles').disabled = !canSmooth();
@@ -381,12 +409,17 @@ function updateToolbar() {
   if (!editing) { $('lblS').textContent = 'Scale'; $('lblR').textContent = 'Rot °'; }
 }
 
-function setTool(t) {
-  gizmo.setMode(t);
+function setTool(t, temporary = false) {
+  if (!temporary) toolBeforeModifier = null;
+  tool = t;
+  if (t !== 'select') gizmo.setMode(t);
+  $('mSelect').classList.toggle('active', t === 'select');
   $('tMove').classList.toggle('active', t === 'translate');
   $('tRot').classList.toggle('active', t === 'rotate');
   $('tScale').classList.toggle('active', t === 'scale');
+  syncGizmoForModifier();
 }
+function selectTool() { if (mode !== 'edit') setMode('select'); setTool('select'); }
 $('tMove').onclick = () => setTool('translate');
 $('tRot').onclick = () => setTool('rotate');
 $('tScale').onclick = () => setTool('scale');
@@ -617,6 +650,134 @@ function applyBool() {
   commit();
   updateToolbar();
 }
+// Merge: combine all selected objects into one mesh (world-space geometry, face colours kept)
+const canMerge = () => mode === 'select' && selection.length > 1;
+function mergeSelected() {
+  if (!canMerge()) return;
+  const parts = selection.slice(), all = [], faces = [], faceColors = new Map();
+  const baseHexes = new Set(parts.map(baseHex));
+  const needColors = baseHexes.size > 1 || parts.some(p => p.userData.model?.faceColors.size);
+  let faceBase = 0;
+  for (const p of parts) {
+    const pos = worldPositions(p), m = new Model(pos.slice(), p.userData.model?.faceOfTri);
+    all.push(pos);
+    let maxF = -1;
+    m.faceOfTri.forEach(f => { faces.push(faceBase + f); if (f > maxF) maxF = f; });
+    if (needColors) {
+      const own = p.userData.model?.faceColors, fallback = baseHex(p);
+      for (let f = 0; f <= maxF; f++) faceColors.set(faceBase + f, own?.get(f) ?? fallback);
+    }
+    faceBase += maxF + 1;
+  }
+  const pos = new Float32Array(all.reduce((n, a) => n + a.length, 0));
+  let o = 0;
+  for (const a of all) { pos.set(a, o); o += a.length; }
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity), max = min.clone().negate();
+  for (let i = 0; i < pos.length; i += 3) for (let k = 0; k < 3; k++) { min.setComponent(k, Math.min(min.getComponent(k), pos[i + k])); max.setComponent(k, Math.max(max.getComponent(k), pos[i + k])); }
+  const c = min.add(max).multiplyScalar(0.5);
+  for (let i = 0; i < pos.length; i += 3) { pos[i] -= c.x; pos[i + 1] -= c.y; pos[i + 2] -= c.z; }
+  const color = baseHex(parts[0]);
+  select(null);
+  for (const m of parts) { boxes.splice(boxes.indexOf(m), 1); disposeMesh(m); }
+  select(addBox({ position: c, color, positions: pos, faces, faceColors: needColors ? faceColors : undefined, name: 'Merged' }));
+  commit();
+  updateToolbar();
+}
+$('mergeBtn').onclick = mergeSelected;
+// Remesh: rebuild each selected mesh with evenly sized triangles (edge length = longest side / fineness)
+let remeshOpen = false;
+function remeshObject(mesh, fineness) {
+  const um = mesh.userData, s = mesh.scale;
+  const pos = um.model ? um.model.positions.slice() : nonIdx(mesh.geometry);
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < pos.length; i += 3) {
+    pos[i] *= s.x; pos[i + 1] *= s.y; pos[i + 2] *= s.z;
+    for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], pos[i + k]); hi[k] = Math.max(hi[k], pos[i + k]); }
+  }
+  const side = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
+  if (!(side > 0)) return null;
+  const skin = skinOnly(pos), r = remesh(skin.positions, side / fineness);
+  if (!r) return null;
+  const faces = new Model(r.positions.slice()).faceOfTri, faceColors = new Map(), oldM = um.model;
+  if (oldM?.faceColors.size) {
+    faces.forEach((f, i) => { const c = oldM.faceColors.get(oldM.faceOfTri[skin.map[r.src[i]]]); if (c !== undefined && !faceColors.has(f)) faceColors.set(f, c); });
+  }
+  const idx = boxes.indexOf(mesh), name = um.name;
+  const nm = addBox({ position: mesh.position.clone(), size: new THREE.Vector3(1, 1, 1), color: um.baseColor.clone(),
+    rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z], positions: r.positions, faces, faceColors,
+    name: name + '_tmp', hidden: um.hidden, locked: um.locked });
+  boxes.splice(boxes.indexOf(nm), 1); boxes.splice(idx, 0, nm);
+  boxes.splice(boxes.indexOf(mesh), 1);
+  return { old: mesh, nm, name };
+}
+function applyRemesh() {
+  if (!canSmooth()) return;
+  const fineness = Math.min(200, Math.max(2, +$('rmFine').value || 10));
+  const msg = t => { $('remeshMsg').textContent = t; };
+  const sel = selection.slice(), done = [];
+  msg('Working…');
+  select(null);
+  let failed = false;
+  for (const mesh of sel) {
+    try {
+      const r = remeshObject(mesh, fineness);
+      if (r) { disposeMesh(r.old); r.nm.userData.name = r.name; done.push(r.nm); } else done.push(mesh);
+    } catch (err) { failed = true; done.push(mesh); }
+  }
+  done.forEach(o => select(o, true));
+  msg(failed ? 'Too fine for some objects (skipped)' : '');
+  commit();
+  syncList();
+  updateToolbar();
+}
+$('remeshBtn').onclick = () => { if (!canSmooth()) return; remeshOpen = !remeshOpen; updateToolbar(); };
+$('remeshApply').onclick = applyRemesh;
+// Array: copy i (1..n) of each selected object gets i times the offset / rotation and scale^i
+let arrayOpen = false;
+// Placement of copy i. Local: offset and rotation accumulate on the source (rotation around the object's own axes).
+// Not local: the predecessor is the pivot, so its displacement vector and orientation are rotated by the step (world axes) and added.
+function arrayTransforms(src, off, rot, n, local) {
+  const step = new THREE.Quaternion().setFromEuler(new THREE.Euler(rot[0], rot[1], rot[2]));
+  const out = [], q = src.quaternion.clone(), pos = src.position.clone(), d = new THREE.Vector3(...off);
+  for (let i = 1; i <= n; i++) {
+    if (local) { q.multiply(step); pos.add(d); }
+    else { if (i > 1) d.applyQuaternion(step); q.premultiply(step); pos.add(d); }
+    const e = new THREE.Euler().setFromQuaternion(q, src.rotation.order);
+    out.push({ position: pos.clone(), rotation: [e.x, e.y, e.z] });
+  }
+  return out;
+}
+function applyArray() {
+  if (!canSmooth()) return;
+  const num = id => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : 0; };
+  const n = Math.min(100, Math.max(1, Math.round(num('arCount'))));
+  const off = ['x', 'y', 'z'].map(a => num('arP' + a));
+  const rot = ['x', 'y', 'z'].map(a => THREE.MathUtils.degToRad(num('arR' + a)));
+  const scl = ['x', 'y', 'z'].map(a => num('arS' + a) || 1);
+  const local = $('arRel').checked, sources = selection.slice(), copies = [];
+  for (const s of sources) {
+    const tr = arrayTransforms(s, off, rot, n, local);
+    for (let i = 1; i <= n; i++) {
+      copies.push(addBox({
+        position: tr[i - 1].position,
+        size: new THREE.Vector3(s.scale.x * scl[0] ** i, s.scale.y * scl[1] ** i, s.scale.z * scl[2] ** i),
+        color: s.userData.baseColor.clone(),
+        rotation: tr[i - 1].rotation,
+        type: s.userData.type, params: { ...s.userData.params },
+        positions: s.userData.model?.positions, faces: s.userData.model?.faceOfTri, faceColors: s.userData.model?.faceColors,
+        name: s.userData.name, hidden: s.userData.hidden, locked: s.userData.locked }));
+    }
+  }
+  select(null);
+  sources.forEach(c => select(c, true));
+  copies.forEach(c => select(c, true));
+  arrayOpen = false;
+  commit();
+  updateToolbar();
+  $('status').textContent = `${copies.length} copies created`;
+}
+$('arrayBtn').onclick = () => { if (!canSmooth()) return; arrayOpen = !arrayOpen; updateToolbar(); };
+$('arrayApply').onclick = applyArray;
 $('bool').onclick = toggleBool;
 $('smooth').onclick = () => { if (!canSmooth()) return; smoothOpen = !smoothOpen; updateToolbar(); };
 $('smoothApply').onclick = applySmooth;
@@ -634,7 +795,7 @@ window.addEventListener('blur', () => {
 // Tell clicks from drags so orbiting does not place anything
 let down = null;
 const dom = renderer.domElement;
-dom.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis }; });
+dom.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled }; });
 dom.addEventListener('pointermove', e => {
   if (mode !== 'place' || e.buttons) { if (e.buttons) ghost.visible = false; return; }
   const pl = placementAt(e);
@@ -644,9 +805,11 @@ dom.addEventListener('pointermove', e => {
 });
 dom.addEventListener('pointerleave', () => ghost.visible = false);
 dom.addEventListener('pointerup', e => {
-  if (!down || down.b !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) return;
-  const onGizmo = down.onGizmo;
+  if (!down) return;
+  const click = down;
   down = null;
+  if (click.b !== 0 || Math.hypot(e.clientX - click.x, e.clientY - click.y) > 8) return;
+  const onGizmo = click.onGizmo;
   if (gizmo.dragging || onGizmo) return;
   if (mode === 'edit') {
     if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, e.shiftKey || e.ctrlKey || e.metaKey);
@@ -689,7 +852,7 @@ setupShortcuts({
   next: () => stepSelection(1),
   rename: () => { const inp = listEl.querySelector('.sel input'); if (!inp) return false; inp.readOnly = false; inp.focus(); inp.select(); },
   objColor: () => $('col').click(),
-  select: () => setMode('select'),
+  select: selectTool,
   box: () => setShape('box'), sphere: () => setShape('sphere'), cylinder: () => setShape('cylinder'), tube: () => setShape('tube'),
   editMode: () => setMode(mode === 'edit' ? 'select' : 'edit'),
   move: () => setTool('translate'), rotate: () => setTool('rotate'), scale: () => setTool('scale'),
@@ -883,10 +1046,9 @@ function syncList() {
   listEl.scrollTop = top;
   listEl.querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
 }
+// Only the object selection re-centres the camera; sub-object changes in edit mode must not make the view jump
 function selectionKey() {
-  let key = selection.map(m => m.uuid).join(',');
-  if (editor.active) key += '|' + editor.kind + [...editor.selV, ...editor.selE, ...editor.selF].join(',');
-  return key;
+  return selection.map(m => m.uuid).join(',');
 }
 function trackSelection() {
   syncList();

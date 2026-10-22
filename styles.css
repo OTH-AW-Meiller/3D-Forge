@@ -29,7 +29,7 @@ input[type=color] { width: 44px; height: 26px; padding: 0; border: none; backgro
 #navWrap { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 6px; z-index: 2; }
 #nav { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; font-size: 12px; color: #8b93a1; }
 #navHome { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8b93a1; }
-#createWrap { position: absolute; top: 40px; left: 116px; height: 40px; display: flex; align-items: center; gap: 6px; z-index: 2; }
+#createWrap { position: absolute; top: 40px; left: 15.67px; height: 32.67px; display: flex; align-items: center; gap: 6px; z-index: 2; }
 #gCreate, #gTools { position: relative; }
 #gCreate > button, #gTools > button { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 12px; }
 #gCreate > button::after, #gTools > button::after { content: ""; position: absolute; top: calc(100% + 3px); left: 50%; display: none; border: 6px solid transparent; border-top-color: #282c34ee; transform: translateX(-50%); }
@@ -43,7 +43,7 @@ input[type=color] { width: 44px; height: 26px; padding: 0; border: none; backgro
 #navGizmo { cursor: grab; }
 #navTools button { width: 36px; height: 36px; padding: 0; font-size: 16px; border-radius: 50%; cursor: grab; touch-action: none; }
 #status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: #8b93a1; pointer-events: none; }
-#toolbar { position: absolute; top: 40px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
+#toolbar { position: absolute; top: 122px; left: 10px; display: flex; flex-direction: column; gap: 4px; padding: 5px; background: #282c34ee; border: 1px solid #4b5262; border-radius: 8px; z-index: 2; }
 #toolbar button { display: flex; flex-direction: column; align-items: center; width: 74px; padding: 5px 4px; font-size: 11px; }
 .ico { display: inline-block; width: 1em; height: 1em; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; vertical-align: -0.15em; }
 #toolbar button i { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
@@ -105,5 +105,6 @@ kbd { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; backgr
 #splash h1 { margin: 0; font-size: 38px; letter-spacing: .06em; font-weight: 800; background: linear-gradient(90deg, #8fb4ff, #b08cff 50%, #ff9a4d); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #splash p { margin: 0; color: #9aa1b5; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; }
 #splash .go { margin-top: 12px; color: #6f7690; font-size: 12px; animation: pulse 1.8s ease-in-out infinite; }
+#splash .copy { color: #6f7690; font-size: 11px; }
 @keyframes float { 50% { transform: translateY(-8px); } }
 @keyframes pulse { 50% { opacity: .3; } }

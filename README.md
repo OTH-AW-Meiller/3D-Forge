@@ -1,8 +1,8 @@
-# 3DForge 0.3
+# 3DForge 0.4
 
 **Live demo:** <https://oth-aw-meiller.github.io/3D-Forge/>
 
-A small browser-based box & mesh modeler built with [three.js](https://threejs.org) (v0.160, loaded via CDN as ES modules). No build step, no dependencies to install.
+A small browser-based mesh modeller built with [three.js](https://threejs.org) (v0.160, loaded via CDN as ES modules). No build step, no dependencies to install.
 
 ## Run
 
