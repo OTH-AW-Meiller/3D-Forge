@@ -1,4 +1,4 @@
-# 3DForge 0.1
+# 3DForge 0.3
 
 **Live demo:** <https://oth-aw-meiller.github.io/3D-Forge/>
 
@@ -31,6 +31,9 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 - Multi-selection: `Shift`/`Ctrl`/`Cmd`+click in the view or in the object list toggles objects, `Ctrl+A` selects all; the gizmo transforms the whole selection, and duplicate, delete and colour apply to all selected objects
 - Numeric position / scale / rotation / colour fields in the side panel
 - Duplicate and delete objects
+- **Bool**: with exactly two objects selected, combine them with Add (A + B) or Subtract (A − B), where A is the first selected object; the result is a new editable mesh (BSP-based CSG, face colours are not kept)
+- **Edges** (Shift+H): hides the edges between faces of the selected objects whose angle is below a limit (default 30°) by merging those faces
+- **Close holes** (Shift+K): fills open boundary loops of the selected objects, so the mesh becomes closed
 - Scrollable object list with rename (double-click) and selection
 - Undo / redo for the whole scene
 
@@ -93,6 +96,7 @@ The complete, always up-to-date list is in the app (`?`).
 | `subedit.js` | Sub-object editor (vertex / edge / face) core |
 | `model.js`, `polygon.js` | Editable mesh model and polygon helpers |
 | `edit-mirror.js`, `edit-topology.js`, `edit-chamfer.js`, `edit-extrude.js`, `edit-subdivide.js` | Editor features, mixed into the editor |
+| `csg.js` | Boolean (CSG) algorithm for meshes |
 | `io.js` | Import / export, including a minimal 3DS reader/writer |
 | `shortcuts.js` | Shortcut registry, tooltips and shortcut table |
 | `splash.js` | Splash screen |

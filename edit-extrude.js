@@ -50,13 +50,24 @@ export class ExtrudeMethods {
     const directed = new Set();
     for (const i of idx) { const [a, b, c] = T.tris[i]; directed.add(a + '>' + b); directed.add(b + '>' + c); directed.add(c + '>' + a); }
     let nextFace = Math.max(...T.face) + 1;
-    const walls = [];
+    const walls = [], strips = [];
     directed.forEach(d => {
       const [a, b] = d.split('>').map(Number);
       if (directed.has(b + '>' + a)) return;
       const a2 = copy.get(a), b2 = copy.get(b), f = nextFace++;
       walls.push([[a, b, b2], f], [[a, b2, a2], f]);
+      const e = new THREE.Vector3().fromArray(T.verts, 3 * b).sub(new THREE.Vector3().fromArray(T.verts, 3 * a));
+      strips.push({ a, b, f, n: e.cross(n).normalize() });
     });
+    // Consecutive walls with less than 30° between them (straight or curved outlines) share one face, so no extra edges appear
+    const root = new Map(strips.map(w => [w.f, w.f]));
+    const find = f => { while (root.get(f) !== f) f = root.get(f); return f; };
+    const byStart = new Map();
+    strips.forEach(w => { if (!byStart.has(w.a)) byStart.set(w.a, []); byStart.get(w.a).push(w); });
+    for (const w of strips) for (const o of byStart.get(w.b) || []) {
+      if (w.n.dot(o.n) > 0.866) root.set(find(o.f), find(w.f));
+    }
+    for (const w of walls) w[1] = find(w[1]);
     for (const i of idx) T.tris[i] = T.tris[i].map(v => copy.get(v));
     for (const [tri, f] of walls) { T.tris.push(tri); T.face.push(f); }
     const faces = new Set(this.selF);

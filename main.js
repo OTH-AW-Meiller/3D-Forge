@@ -5,6 +5,9 @@ import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { SubObjectEditor, createGeometry, applyColors, outlineGeometry } from './subedit.js';
 import { createStage } from './stage.js';
+import { booleanOp, fillHoles } from './csg.js';
+import { Model, nonIndexedPositions as nonIdx, edgeKey } from './model.js';
+import { nonIndexedPositions } from './model.js';
 import { setupIO } from './io.js';
 import { setupShortcuts } from './shortcuts.js';
 import { SHAPES, defaultParams, normalizeParams, buildShape } from './shapes.js';
@@ -258,6 +261,16 @@ function updateToolbar() {
   for (const id of ['tMove', 'tRot', 'tScale']) $(id).disabled = !selected;
   for (const id of ['dup', 'del']) $(id).disabled = !selected || editing;
   $('mEdit').disabled = selection.length !== 1;
+  if (!canBool()) boolOpen = false;
+  $('bool').disabled = !canBool();
+  $('bool').classList.toggle('active', boolOpen);
+  $('boolRow').hidden = !boolOpen;
+  if (!canSmooth()) smoothOpen = false;
+  $('smooth').disabled = !canSmooth();
+  $('closeHoles').disabled = !canSmooth();
+  $('smooth').classList.toggle('active', smoothOpen);
+  $('smoothRow').hidden = !smoothOpen;
+  if (boolOpen) $('boolInfo').textContent = `A = ${selection[0].userData.name}, B = ${selection[1].userData.name} (A = first selected)`;
   $('mEdit').classList.toggle('active', editing);
   $('gEdit').classList.toggle('open', editing);
   document.querySelectorAll('[data-sub]').forEach(b => b.disabled = !editing);
@@ -368,6 +381,154 @@ function duplicateSelected() {
   copies.forEach(c => select(c, true));
   commit();
 }
+// Hide edges: merges neighbouring faces whose angle is below the limit
+let smoothOpen = false;
+const canSmooth = () => mode === 'select' && selection.length > 0;
+function smoothMesh(mesh, deg) {
+  const um = mesh.userData;
+  const pos = um.model ? um.model.positions.slice() : nonIdx(mesh.geometry);
+  const m = new Model(pos.slice(), um.model?.faceOfTri);
+  const cos = Math.cos(deg * Math.PI / 180);
+  const parent = new Map();
+  const find = f => { while (parent.has(f)) f = parent.get(f); return f; };
+  const edgeTris = new Map();
+  for (let t = 0; t < m.nTri; t++) {
+    if (!m.valid[t]) continue;
+    const [a, b, c] = m.triVids(t);
+    for (const k of [edgeKey(a, b), edgeKey(b, c), edgeKey(c, a)]) {
+      if (!edgeTris.has(k)) edgeTris.set(k, []);
+      edgeTris.get(k).push(t);
+    }
+  }
+  for (const ts of edgeTris.values()) {
+    if (ts.length !== 2) continue;
+    const [p, q] = ts;
+    if (m.un[3 * p] * m.un[3 * q] + m.un[3 * p + 1] * m.un[3 * q + 1] + m.un[3 * p + 2] * m.un[3 * q + 2] < cos) continue;
+    const r1 = find(m.faceOfTri[p]), r2 = find(m.faceOfTri[q]);
+    if (r1 !== r2) parent.set(r2, r1);
+  }
+  const faces = Array.from(m.faceOfTri, f => find(f));
+  if (new Set(faces).size === new Set(m.faceOfTri).size) return false;
+  const faceColors = new Map();
+  m.faceOfTri.forEach((f, i) => { const c = um.model?.faceColors.get(f); if (c !== undefined && !faceColors.has(faces[i])) faceColors.set(faces[i], c); });
+  const idx = boxes.indexOf(mesh), name = um.name;
+  const nm = addBox({ position: mesh.position.clone(), size: mesh.scale.clone(), color: um.baseColor.clone(),
+    rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z], positions: pos, faces, faceColors, name: name + '_tmp' });
+  boxes.splice(boxes.indexOf(nm), 1); boxes.splice(idx, 0, nm);
+  boxes.splice(boxes.indexOf(mesh), 1);
+  return { old: mesh, nm, name };
+}
+function applySmooth() {
+  if (!canSmooth()) return;
+  const deg = Math.min(89, Math.max(1, +$('smoothAngle').value || 30));
+  const sel = selection.slice(), out = [];
+  select(null);
+  for (const mesh of sel) {
+    const r = smoothMesh(mesh, deg);
+    if (r) { disposeMesh(r.old); r.nm.userData.name = r.name; out.push(r.nm); } else out.push(mesh);
+  }
+  out.forEach(o => select(o, true));
+  $('smoothMsg').textContent = '';
+  commit();
+  syncList();
+}
+// Close holes: fills open boundary loops of the selected meshes
+function closeHolesSelected() {
+  if (!canSmooth()) return;
+  const sel = selection.slice(), out = [];
+  let filled = 0;
+  select(null);
+  for (const mesh of sel) {
+    const um = mesh.userData;
+    const base = um.model ? um.model.positions.slice() : nonIdx(mesh.geometry);
+    const r = fillHoles(base);
+    if (!r.added) { out.push(mesh); continue; }
+    const m0 = um.model || new Model(base.slice());
+    const faces = Array.from(m0.faceOfTri);
+    const top = Math.max(-1, ...faces) + 1;
+    r.faceOfNew.forEach(l => faces.push(top + l));
+    const idx = boxes.indexOf(mesh), name = um.name;
+    const nm = addBox({ position: mesh.position.clone(), size: mesh.scale.clone(), color: um.baseColor.clone(),
+      rotation: [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z], positions: r.positions, faces,
+      faceColors: um.model?.faceColors, name: name + '_tmp' });
+    boxes.splice(boxes.indexOf(nm), 1); boxes.splice(idx, 0, nm);
+    boxes.splice(boxes.indexOf(mesh), 1);
+    disposeMesh(mesh);
+    nm.userData.name = name;
+    out.push(nm);
+    filled++;
+  }
+  out.forEach(o => select(o, true));
+  commit();
+  syncList();
+  const st = $('status');
+  if (st) st.textContent = filled ? `Holes closed in ${filled} object(s)` : 'No holes found';
+}
+// Boolean: A = first selected object, B = second; the result replaces both
+let boolOpen = false;
+const canBool = () => mode === 'select' && selection.length === 2;
+function worldPositions(mesh) {
+  mesh.updateMatrixWorld(true);
+  const pos = nonIndexedPositions(mesh.geometry), v = new THREE.Vector3();
+  for (let i = 0; i < pos.length; i += 3) v.fromArray(pos, i).applyMatrix4(mesh.matrixWorld).toArray(pos, i);
+  if (mesh.matrixWorld.determinant() < 0) {
+    for (let i = 0; i < pos.length; i += 9) for (let k = 0; k < 3; k++) { const t = pos[i + 3 + k]; pos[i + 3 + k] = pos[i + 6 + k]; pos[i + 6 + k] = t; }
+  }
+  return pos;
+}
+function toggleBool() { if (!canBool()) return; boolOpen = !boolOpen; updateToolbar(); }
+function applyBool() {
+  if (!canBool()) return;
+  const [A, B] = selection, op = document.querySelector('[name=boolOp]:checked').value;
+  const msg = t => { $('boolMsg').textContent = t; };
+  msg('Working…');
+  let pos;
+  try { pos = booleanOp(worldPositions(A), worldPositions(B), op); } catch (err) { msg('Operation failed (mesh too complex)'); return; }
+  if (!pos.length) { msg('Result is empty'); return; }
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity), max = min.clone().negate();
+  for (let i = 0; i < pos.length; i += 3) for (let k = 0; k < 3; k++) { min.setComponent(k, Math.min(min.getComponent(k), pos[i + k])); max.setComponent(k, Math.max(max.getComponent(k), pos[i + k])); }
+  const c = min.add(max).multiplyScalar(0.5);
+  for (let i = 0; i < pos.length; i += 3) { pos[i] -= c.x; pos[i + 1] -= c.y; pos[i + 2] -= c.z; }
+  // Group triangles lying in the same plane into one face (BSP splitting creates T-junctions that break edge-based grouping)
+  const faceOf = [], planes = new Map(), q = v => Math.round(v * 1e3);
+  const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), nrm = new THREE.Vector3();
+  for (let t = 0; t < pos.length / 9; t++) {
+    va.fromArray(pos, 9 * t); vb.fromArray(pos, 9 * t + 3); vc.fromArray(pos, 9 * t + 6);
+    nrm.subVectors(vb, va).cross(vc.sub(va)).normalize();
+    const k = q(nrm.x) + ',' + q(nrm.y) + ',' + q(nrm.z) + ',' + q(nrm.dot(va));
+    if (!planes.has(k)) planes.set(k, planes.size);
+    faceOf.push(planes.get(k));
+  }
+  // Merge smoothly connected triangles (curved surfaces) so only real creases remain as edges
+  const nT = faceOf.length, parent = Array.from({ length: Math.max(...faceOf, 0) + 1 }, (_, i) => i);
+  const find = i => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
+  const tn = [], vk = i => [0, 1, 2].map(c => Math.round(pos[i + c] * 1e4)).join(',');
+  const edgeTri = new Map();
+  for (let t = 0; t < nT; t++) {
+    va.fromArray(pos, 9 * t); vb.fromArray(pos, 9 * t + 3); vc.fromArray(pos, 9 * t + 6);
+    tn.push(nrm.subVectors(vb, va).cross(vc.sub(va)).normalize().clone());
+    const ks = [vk(9 * t), vk(9 * t + 3), vk(9 * t + 6)];
+    for (let e = 0; e < 3; e++) {
+      const a = ks[e], b = ks[(e + 1) % 3], key = a < b ? a + '|' + b : b + '|' + a, o = edgeTri.get(key);
+      if (o === undefined) edgeTri.set(key, t);
+      else if (tn[o].dot(tn[t]) > 0.866) parent[find(faceOf[o])] = find(faceOf[t]);
+    }
+  }
+  for (let t = 0; t < nT; t++) faceOf[t] = find(faceOf[t]);
+  const color = baseHex(A);
+  select(null);
+  for (const m of [A, B]) { boxes.splice(boxes.indexOf(m), 1); disposeMesh(m); }
+  select(addBox({ position: c, color, positions: pos, faces: faceOf, name: op === 'union' ? 'Union' : 'Difference' }));
+  boolOpen = false;
+  msg('');
+  commit();
+  updateToolbar();
+}
+$('bool').onclick = toggleBool;
+$('smooth').onclick = () => { if (!canSmooth()) return; smoothOpen = !smoothOpen; updateToolbar(); };
+$('smoothApply').onclick = applySmooth;
+$('closeHoles').onclick = closeHolesSelected;
+$('boolApply').onclick = applyBool;
 $('del').onclick = deleteSelected;
 $('dup').onclick = duplicateSelected;
 
@@ -422,6 +583,7 @@ setupShortcuts({
   dup: duplicateSelected,
   del: deleteSelected,
   deselect: () => select(null),
+  bool: toggleBool,
   selectAllObjects: () => { if (mode === 'place') setMode('select'); select(null); boxes.forEach(b => select(b, true)); },
   prev: () => stepSelection(-1),
   next: () => stepSelection(1),

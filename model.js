@@ -124,8 +124,39 @@ export class Model {
         e.faces.add(f);
       }
     }
-    this.edges = [...info.values()].filter(e => e.count === 1 || e.faces.size > 1);
+    const open = [...info.values()].filter(e => e.count === 1);
+    const hidden = this.tJunctionEdges(open);
+    this.edges = [...info.values()].filter(e => (e.count === 1 ? !hidden.has(e) : e.faces.size > 1));
     this.edgeByKey = new Map(this.edges.map(e => [e.key, e]));
+  }
+
+  // Open edges that overlap another open edge are T-junction seams inside a surface, not real borders
+  tJunctionEdges(open) {
+    const hidden = new Set();
+    if (open.length < 2 || open.length > 8000) return hidden;
+    const v = this.verts, tol = 1e-4;
+    const seg = open.map(e => [v[3 * e.a], v[3 * e.a + 1], v[3 * e.a + 2], v[3 * e.b], v[3 * e.b + 1], v[3 * e.b + 2]]);
+    const onSeg = (p, s) => {
+      const dx = s[3] - s[0], dy = s[4] - s[1], dz = s[5] - s[2], l2 = dx * dx + dy * dy + dz * dz;
+      if (l2 < 1e-12) return false;
+      const t = ((p[0] - s[0]) * dx + (p[1] - s[1]) * dy + (p[2] - s[2]) * dz) / l2;
+      if (t < -1e-6 || t > 1 + 1e-6) return false;
+      return Math.hypot(s[0] + t * dx - p[0], s[1] + t * dy - p[1], s[2] + t * dz - p[2]) < tol;
+    };
+    const parallel = (p, q) => {
+      const ax = p[3] - p[0], ay = p[4] - p[1], az = p[5] - p[2], bx = q[3] - q[0], by = q[4] - q[1], bz = q[5] - q[2];
+      return Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx) < 1e-4 * Math.hypot(ax, ay, az) * Math.hypot(bx, by, bz);
+    };
+    for (let i = 0; i < open.length; i++) {
+      const m = [(seg[i][0] + seg[i][3]) / 2, (seg[i][1] + seg[i][4]) / 2, (seg[i][2] + seg[i][5]) / 2];
+      for (let j = 0; j < open.length; j++) {
+        if (i === j || open[i].key === open[j].key) continue;
+        if (onSeg(m, seg[j]) && parallel(seg[i], seg[j])) {
+          hidden.add(open[i]); hidden.add(open[j]); break;
+        }
+      }
+    }
+    return hidden;
   }
 
   // Smooth normals only between triangles with less than a 30° crease
