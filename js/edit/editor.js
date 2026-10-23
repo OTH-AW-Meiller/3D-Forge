@@ -276,6 +276,41 @@ export class SubObjectEditor {
     if (this.gizmo.object !== this.pivot) this.gizmo.attach(this.pivot);
   }
 
+  // Moves the object origin / orientation to a world pose while the shape stays where it is
+  setPivotWorld(pos, quat) {
+    const mesh = this.mesh;
+    mesh.updateMatrixWorld(true);
+    const A = new THREE.Matrix4().compose(pos, quat, mesh.scale).invert().multiply(mesh.matrixWorld);
+    const m = this.model, v = new THREE.Vector3();
+    for (let i = 0; i < m.nVerts; i++) v.fromArray(m.verts, 3 * i).applyMatrix4(A).toArray(m.verts, 3 * i);
+    mesh.position.copy(pos);
+    mesh.quaternion.copy(quat);
+    mesh.updateMatrixWorld(true);
+    this.changed = true;
+    this.applyVerts();
+  }
+
+  // Pivot of the current selection: centroid, Y = normal
+  alignPivotToSelection() {
+    const vids = this.transformVids();
+    if (!vids.size) return false;
+    this.mesh.updateMatrixWorld(true);
+    const c = new THREE.Vector3(), p = new THREE.Vector3(), q = new THREE.Quaternion();
+    vids.forEach(i => c.add(p.fromArray(this.model.verts, 3 * i)));
+    c.divideScalar(vids.size).applyMatrix4(this.mesh.matrixWorld);
+    this.selectionQuaternion(q);
+    this.setPivotWorld(c, q);
+    this.updatePivot();
+    return true;
+  }
+
+  // Object mode: change the pivot of a mesh (it becomes an editable mesh)
+  setObjectPivot(mesh, pos, quat) {
+    this.enter(mesh);
+    this.setPivotWorld(pos.clone(), quat.clone());
+    this.exit();
+  }
+
   // Selection orientation: Y = averaged normal, X = edge direction
   selectionQuaternion(out) {
     const m = this.model, un = m.un;
