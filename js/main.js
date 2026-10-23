@@ -477,6 +477,7 @@ $('selGroupSave').onclick = () => {
   groupMap(true).set(name, list);
   refreshGroupList(true);
   $('selGroupList').value = name;
+  $('selGroupName').value = '';
   $('status').textContent = `Group "${name}" saved (${list.length})`;
 };
 $('selGroupApply').onclick = () => {
