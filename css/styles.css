@@ -114,7 +114,8 @@ kbd { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; backgr
 #selOpRow button, #selShapeRow button { flex: 1; padding: 5px 0; }
 #selOpRow .ico, #selShapeRow .ico { width: 20px; height: 20px; }
 #selGroupRow, #selGroupRow2 { display: flex; gap: 4px; }
-#selGroupName, #selGroupList { flex: 1; min-width: 0; }
+#selGroupName, #selGroupList { flex: 1; min-width: 0; 
+  box-sizing: border-box; background: #1e2127; color: #ddd; border: 1px solid #4b5262; border-radius: 3px; padding: 3px; font: inherit; color-scheme: dark; }
 #selGroupRow button, #selGroupRow2 button { padding: 4px 8px; }
 #selBox { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 3; }
 #selBox polygon { fill: #4c8bf533; stroke: #7ab0ff; stroke-width: 1; stroke-dasharray: 5 3; }
