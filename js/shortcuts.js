@@ -30,6 +30,9 @@ export const SHORTCUTS = [
   { id: 'cylinder', group: 'Modes & create', label: 'Create cylinder', keys: ['4'], when: 'obj', el: '[data-shape=cylinder]' },
   { id: 'tube', group: 'Modes & create', label: 'Create tube', keys: ['5'], when: 'obj', el: '[data-shape=tube]' },
   { id: 'plane', group: 'Modes & create', label: 'Create plane', keys: ['6'], when: 'obj', el: '[data-shape=plane]' },
+  { id: 'cone', group: 'Modes & create', label: 'Create cone', keys: ['7'], when: 'obj', el: '[data-shape=cone]' },
+  { id: 'torus', group: 'Modes & create', label: 'Create torus', keys: ['8'], when: 'obj', el: '[data-shape=torus]' },
+  { id: 'icosphere', group: 'Modes & create', label: 'Create ico sphere', keys: ['9'], when: 'obj', el: '[data-shape=icosphere]' },
   { id: 'editMode', group: 'Modes & create', label: 'Toggle edit mode', keys: ['Tab'], when: 'sel', el: '#mEdit' },
   // Transform
   { id: 'move', group: 'Transform', label: 'Move', keys: ['W'], when: 'sel', el: '#tMove' },

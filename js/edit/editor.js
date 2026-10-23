@@ -42,6 +42,8 @@ export class SubObjectEditor {
     this.selF = new Set();
     this.drag = null;
     this.addMode = false;
+    this.connectMode = false;
+    this.loopMode = false;
     this.mirror = { x: false, y: false, z: false };
     gizmo.addEventListener('dragging-changed', e => {
       if (!this.active || gizmo.object !== this.pivot) return;
@@ -96,8 +98,13 @@ export class SubObjectEditor {
     this.kind = kind;
     this.setAddMode(false);
     this.selV.clear(); this.selE.clear(); this.selF.clear();
-    this.vertPoints.visible = kind !== 'face';
+    this.updatePointsVisibility();
     this.refreshSelection();
+  }
+
+  // Vertices are shown in edge mode only while connecting two vertices
+  updatePointsVisibility() {
+    this.vertPoints.visible = this.kind === 'vertex' || (this.kind === 'edge' && this.connectMode);
   }
 
   selectAll() {
@@ -169,6 +176,7 @@ export class SubObjectEditor {
     this.vertPoints.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(m.verts.length), 3));
     this.refreshMirrorPlanes();
     this.refreshGeometryOverlays();
+    this.updatePointsVisibility();
     this.mesh.add(this.group);
   }
 
@@ -218,7 +226,7 @@ export class SubObjectEditor {
     const pts = [], lines = [], tris = [];
     const push = (arr, i) => arr.push(v[3 * i], v[3 * i + 1], v[3 * i + 2]);
     const X = { V: this.selV, E: this.selE, F: this.selF };
-    if (this.kind !== 'face') X.V.forEach(i => push(pts, i));
+    if (this.kind === 'vertex' || (this.kind === 'edge' && this.connectMode)) X.V.forEach(i => push(pts, i));
     if (this.kind === 'edge') X.E.forEach(k => { const e = m.edgeByKey.get(k); push(lines, e.a); push(lines, e.b); });
     if (this.kind === 'face') {
       X.F.forEach(f => m.faces.get(f).tris.forEach(t => { for (let k = 0; k < 3; k++) push(tris, m.corner[3 * t + k]); }));
@@ -236,7 +244,7 @@ export class SubObjectEditor {
 
   canAdd() {
     if (this.kind === 'vertex') return true;
-    if (this.kind === 'edge') return this.selV.size === 2;
+    if (this.kind === 'edge') return true;
     return this.selF.size > 0;
   }
 
@@ -433,14 +441,15 @@ export class SubObjectEditor {
         return null;
       };
       const vc = [];
-      for (let i = 0; i < m.nVerts; i++) {
+      const pickVerts = this.kind === 'vertex' || this.connectMode;
+      for (let i = 0; i < m.nVerts && pickVerts; i++) {
         if (!ok[i]) continue;
         const d = Math.hypot(sx[i] - mx, sy[i] - my);
         if (d < 10) vc.push({ d, id: i, t: 0, a: i, b: i });
       }
       id = firstVisible(vc);
       // Edge mode: fall back to edges when no visible vertex is close (hidden vertices must not block edges)
-      if (id === null && this.kind === 'edge') {
+      if (id === null && this.kind === 'edge' && !this.connectMode) {
         const ec = [];
         for (const ed of m.edges) {
           if (!ok[ed.a] || !ok[ed.b]) continue;
@@ -456,8 +465,40 @@ export class SubObjectEditor {
 
     const set = this.kind === 'vertex' || (this.kind === 'edge' && typeof id === 'number') ? this.selV : this.kind === 'edge' ? this.selE : this.selF;
     if (op === 'set') { this.selV.clear(); this.selE.clear(); this.selF.clear(); }
-    applySelectOp(set, new Set(id !== null ? [id] : []), op);
+    const hits = id === null ? [] : this.kind === 'edge' && this.loopMode && typeof id === 'string' ? this.edgeLoop(id) : [id];
+    applySelectOp(set, new Set(hits), op);
     this.refreshSelection();
+  }
+
+  // Edge loop through an edge: continues across vertices where four edges meet (to the edge sharing no face),
+  // and along open boundaries. Stops at poles and other vertices.
+  edgeLoop(key) {
+    const m = this.model, start = m.edgeByKey.get(key);
+    if (!start) return [];
+    const at = new Map();
+    for (const e of m.edges) for (const v of [e.a, e.b]) { if (!at.has(v)) at.set(v, []); at.get(v).push(e); }
+    const next = (e, v) => {
+      const list = at.get(v);
+      if (e.faces.size < 2) {
+        const bnd = list.filter(x => x !== e && x.faces.size < 2);
+        return bnd.length === 1 && list.length >= 2 ? bnd[0] : null;
+      }
+      if (list.length !== 4) return null;
+      const opp = list.filter(x => x !== e && ![...x.faces].some(f => e.faces.has(f)));
+      return opp.length === 1 ? opp[0] : null;
+    };
+    const out = new Set([start.key]);
+    for (const first of [start.a, start.b]) {
+      let e = start, v = first;
+      for (;;) {
+        const n = next(e, v);
+        if (!n || out.has(n.key)) break;
+        out.add(n.key);
+        v = n.a === v ? n.b : n.a;
+        e = n;
+      }
+    }
+    return [...out];
   }
 
   // Region selection (polygon in canvas coordinates: rectangle, circle or lasso)

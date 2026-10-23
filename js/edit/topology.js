@@ -6,6 +6,7 @@ export class TopologyMethods {
   // --- Add / remove ---------------------------------------------------
   setAddMode(on) {
     this.addMode = on;
+    if (!on && this.connectMode) { this.connectMode = false; this.selV.clear(); this.updatePointsVisibility(); this.refreshSelection?.(); }
     this.dom.style.cursor = on ? 'crosshair' : '';
   }
 
@@ -72,7 +73,14 @@ export class TopologyMethods {
 
   add() {
     if (this.kind === 'vertex') { this.setAddMode(!this.addMode); return; }
-    if (this.kind === 'edge') this.connectVertices();
+    if (this.kind === 'edge') {
+      if (this.connectMode && this.selV.size === 2) { this.connectVertices(); this.setAddMode(false); return; }
+      this.connectMode = !this.connectMode;
+      this.selV.clear(); this.selE.clear();
+      this.updatePointsVisibility();
+      this.refreshSelection();
+      return;
+    }
     else this.extrudeMirrored();
   }
 

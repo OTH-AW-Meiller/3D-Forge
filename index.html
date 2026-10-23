@@ -99,14 +99,17 @@
 <div id="status"></div>
 <div id="createWrap">
   <div class="group" id="gCreate">
-    <button id="mCreate" title="Create (2–6)"><i><span class="ico" style="--icon:url(../icons/create.svg)"></span></i>Create</button>
+    <button id="mCreate" title="Create (2–9)"><i><span class="ico" style="--icon:url(../icons/create.svg)"></span></i>Create</button>
     <div class="flyout">
       <button data-shape="box" class="active" title="Box (2)"><i><span class="ico" style="--icon:url(../icons/box.svg)"></span></i>Box</button>
       <button data-shape="sphere" title="Sphere (3)"><i><span class="ico" style="--icon:url(../icons/sphere.svg)"></span></i>Sphere</button>
+      <button data-shape="icosphere" title="Ico Sphere (9)"><i><span class="ico" style="--icon:url(../icons/icosphere.svg)"></span></i>Ico Sphere</button>
       <button data-shape="cylinder" title="Cylinder (4)"><i><span class="ico" style="--icon:url(../icons/cylinder.svg)"></span></i>Cylinder</button>
       <button data-shape="tube" title="Tube (5)"><i><span class="ico" style="--icon:url(../icons/tube.svg)"></span></i>Tube</button>
       <button data-shape="plane" title="Plane (6)"><i><span class="ico" style="--icon:url(../icons/plane.svg)"></span></i>Plane</button>
-      <button id="polyBtn" title="Draw a polyline on a surface, Enter closes it into a face"><i><span class="ico" style="--icon:url(../icons/polyline.svg)"></span></i>Polyline</button>
+      <button data-shape="cone" title="Cone (7)"><i><span class="ico" style="--icon:url(../icons/cone.svg)"></span></i>Cone</button>
+      <button data-shape="torus" title="Torus (8)"><i><span class="ico" style="--icon:url(../icons/torus.svg)"></span></i>Torus</button>
+      <button id="polyBtn" title="Draw a polygon on a surface, Enter closes it into a face"><i><span class="ico" style="--icon:url(../icons/polygon.svg)"></span></i>Polygon</button>
     </div>
   </div>
   <div class="group" id="gTools">
@@ -154,6 +157,7 @@
     <div class="row" id="selShapeRow"><button data-selshape="rect" title="Rectangle: drag a box"><span class="ico" style="--icon:url(../icons/selshape-rect.svg)"></span></button> <button data-selshape="circle" title="Circle: drag from the center outwards"><span class="ico" style="--icon:url(../icons/selshape-circle.svg)"></span></button> <button data-selshape="lasso" title="Lasso: draw a free shape"><span class="ico" style="--icon:url(../icons/selshape-lasso.svg)"></span></button></div>
     <div class="row" id="selOpRow"><button data-selop="set" title="Set: replace the selection"><span class="ico" style="--icon:url(../icons/sel-set.svg)"></span></button> <button data-selop="extend" title="Extend: add to the selection"><span class="ico" style="--icon:url(../icons/sel-extend.svg)"></span></button> <button data-selop="subtract" title="Subtract: remove from the selection"><span class="ico" style="--icon:url(../icons/sel-subtract.svg)"></span></button></div>
     <div class="row"><label title="On: items only touched by the selection shape are selected too. Off: items must lie completely inside."><input type="checkbox" id="selTouch"> Intersect (also partly covered)</label></div>
+    <div class="row" id="selLoopRow" hidden><label title="Edge mode: clicking an edge selects its whole edge loop"><input type="checkbox" id="selLoop"> Loop (select edge loops)</label></div>
     <div class="hint">Click, or drag a rectangle / circle / lasso (shape buttons). Shift/Ctrl+click toggles, Shift/Ctrl+drag extends (with Set).</div>
   </div>
 
@@ -227,11 +231,11 @@
     F: center view on orbit center · Orbit buttons (top right): rotate around origin or selection<br>
     Fly: hold right mouse button + W/A/S/D to move, E/Q up/down, Shift faster, drag to look around<br>
     <b>Objects</b><br>
-    <b>Create</b>: choose Box / Sphere / Cylinder / Tube, set its parameters in the panel, then click the ground or an object face to place it. The last created object is selected.<br>
+    <b>Create</b>: choose Box / Sphere / Ico Sphere / Cylinder / Tube / Cone / Torus / Plane, set its parameters in the panel, then click the ground or an object face to place it. The last created object is selected.<br>
     <b>Select</b>: click an object in the view or drag a rectangle, circle or lasso (Select tool; mode Set / Extend / Subtract in the panel; “Intersect” also selects partly covered items) or click it in the object list (double-click a list entry to rename it). Use the gizmo to move / rotate / scale; the grid field sets the snap step (0 = continuous).<br>
     Del: delete · Ctrl+D: duplicate · Esc: deselect · Ctrl+Z / Ctrl+Shift+Z: undo / redo<br>
     <b>Shortcuts</b><br>
-    1: Select · 2–6: Box / Sphere / Cylinder / Tube / Plane · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
+    1: Select · 2–9: Box / Sphere / Cylinder / Tube / Plane / Cone / Torus / Ico Sphere · W / E / R: Move / Rotate / Scale · X: gizmo global / local · Tab: edit mode<br>
     <b>File menu</b>: load / save JSON (lossless); import / export 3DS, OBJ, STL, glTF/GLB.
   </div>
   <div class="row" style="margin-top:12px"><button data-close>Close</button></div>

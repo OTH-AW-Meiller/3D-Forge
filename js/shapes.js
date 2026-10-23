@@ -32,6 +32,15 @@ export const SHAPES = {
       size: new THREE.Vector3(p.d, p.d, p.d),
     }),
   },
+  icosphere: {
+    label: 'Ico Sphere',
+    // Detail n splits every icosahedron edge into n + 1 parts
+    fields: [dim('d', 'Diameter', 1), seg('sub', 'Subdivisions', 2, 0, 8)],
+    build: p => ({
+      geometry: new THREE.IcosahedronGeometry(p.d / 2, p.sub),
+      size: new THREE.Vector3(p.d, p.d, p.d),
+    }),
+  },
   cylinder: {
     label: 'Cylinder',
     fields: [dim('d', 'Diameter', 1), dim('h', 'Height', 1), seg('seg', 'Subdivisions', 48, 3, 128)],
@@ -53,6 +62,28 @@ export const SHAPES = {
       geometry.rotateX(-Math.PI / 2);
       geometry.translate(0, -p.h / 2, 0);
       return { geometry, size: new THREE.Vector3(p.od, p.h, p.od) };
+    },
+  },
+  cone: {
+    label: 'Cone',
+    // Top diameter 0 gives a pointed cone, larger values a truncated cone
+    fields: [dim('d', 'Base diameter', 1), { key: 'td', label: 'Top diameter', def: 0, min: 0, step: 0.25 }, dim('h', 'Height', 1),
+      seg('seg', 'Subdivisions', 48, 3, 128)],
+    build: p => ({
+      geometry: new THREE.CylinderGeometry(p.td / 2, p.d / 2, p.h, p.seg),
+      size: new THREE.Vector3(Math.max(p.d, p.td), p.h, Math.max(p.d, p.td)),
+    }),
+  },
+  torus: {
+    label: 'Torus',
+    fields: [dim('d', 'Ring diameter', 1), dim('td', 'Tube diameter', 0.3, 0.1),
+      seg('seg', 'Ring subdivisions', 48, 3, 128), seg('tseg', 'Tube subdivisions', 16, 3, 64)],
+    build: p => {
+      const R = p.d / 2, r = Math.min(p.td, p.d * 2) / 2;
+      return {
+        geometry: new THREE.TorusGeometry(R, r, p.tseg, p.seg).rotateX(Math.PI / 2),
+        size: new THREE.Vector3(p.d + 2 * r, 2 * r, p.d + 2 * r),
+      };
     },
   },
 };

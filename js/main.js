@@ -339,7 +339,7 @@ function setMode(m) {
   document.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('active', m === 'place' && b.dataset.shape === shape));
   if (m === 'place' || m === 'poly') select(null);
   if (m !== 'place') ghost.visible = false;
-  if (m === 'poly') $('status').textContent = 'Polyline: click points, Enter or click the first point closes, Backspace removes, Esc cancels';
+  if (m === 'poly') $('status').textContent = 'Polygon: click points, Enter or click the first point closes, Backspace removes, Esc cancels';
   updateToolbar();
 }
 function setSub(kind) {
@@ -415,6 +415,8 @@ function updateToolbar() {
   $('smoothRow').hidden = !smoothOpen;
   if (boolOpen) $('boolInfo').textContent = `A = ${selection[0].userData.name}, B = ${selection[1].userData.name} (A = first selected)`;
   $('secSelTool').hidden = !(tool === 'select' && (mode === 'select' || mode === 'edit'));
+  $('selLoopRow').hidden = !(editing && editor.kind === 'edge');
+  editor.loopMode = $('selLoop').checked;
   $('mEdit').classList.toggle('active', editing);
   $('gEdit').classList.toggle('open', editing);
   document.querySelectorAll('[data-sub]').forEach(b => b.disabled = !editing);
@@ -424,7 +426,7 @@ function updateToolbar() {
   $('subChamfer').hidden = !editing || editor.kind !== 'edge';
   $('chamferRow').hidden = $('subChamfer').hidden;
   $('subChamfer').disabled = !editing || !editor.canChamfer();
-  $('subAdd').classList.toggle('active', editing && editor.addMode);
+  $('subAdd').classList.toggle('active', editing && (editor.addMode || editor.connectMode));
   $('subAdd').dataset.tip = ADD_TITLES[editor.kind];
   $('subDel').dataset.tip = DEL_TITLES[editor.kind];
   $('props').classList.toggle('disabled', !selected);
@@ -439,6 +441,7 @@ function setSelectOp(op) {
 }
 document.querySelectorAll('[data-selop]').forEach(b => b.onclick = () => setSelectOp(b.dataset.selop));
 setSelectOp('set');
+$('selLoop').addEventListener('change', () => { editor.loopMode = $('selLoop').checked; });
 let selShape = 'rect';
 function setSelShape(s) {
   selShape = s;
@@ -829,7 +832,7 @@ function flipSelected() {
 }
 $('flipBtn').onclick = flipSelected;
 
-// Polyline: click points on a surface (the grid or an object's face), Enter closes the outline into a flat face
+// Polygon: click points on a surface (the grid or an object's face), Enter closes the outline into a flat face
 let polyPts = [], polyPlane = null, polyCursor = null;
 const polyLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffc233, depthTest: false }));
 const polyDots = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xffc233, size: 8, sizeAttenuation: false, depthTest: false }));
@@ -873,12 +876,12 @@ function polyPointAt(e) {
   return p;
 }
 function polyFinish() {
-  if (polyPts.length < 3) { $('status').textContent = 'Polyline needs at least 3 points'; return; }
+  if (polyPts.length < 3) { $('status').textContent = 'Polygon needs at least 3 points'; return; }
   const n = polyPlane.normal.clone();
   const u = new THREE.Vector3().crossVectors(n, Math.abs(n.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
   const v = new THREE.Vector3().crossVectors(n, u);
   const tris = THREE.ShapeUtils.triangulateShape(polyPts.map(p => new THREE.Vector2(p.dot(u), p.dot(v))), []);
-  if (!tris.length) { $('status').textContent = 'Polyline outline is degenerate'; return; }
+  if (!tris.length) { $('status').textContent = 'Polygon outline is degenerate'; return; }
   const c = polyPts.reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(polyPts.length);
   const pos = [];
   for (const t of tris) {
@@ -888,9 +891,9 @@ function polyFinish() {
   }
   polyReset();
   setMode('select');
-  select(addBox({ position: c, color: $('ncol').value, type: 'plane', positions: new Float32Array(pos), name: 'Polyline 1' }));
+  select(addBox({ position: c, color: $('ncol').value, type: 'plane', positions: new Float32Array(pos), name: 'Polygon 1' }));
   commit();
-  $('status').textContent = 'Polyline face created';
+  $('status').textContent = 'Polygon face created';
 }
 function polyClick(e) {
   const p = polyPointAt(e);
@@ -1111,7 +1114,7 @@ setupShortcuts({
   rename: () => { const inp = listEl.querySelector('.sel input'); if (!inp) return false; inp.readOnly = false; inp.focus(); inp.select(); },
   objColor: () => $('col').click(),
   select: selectTool,
-  box: () => setShape('box'), sphere: () => setShape('sphere'), cylinder: () => setShape('cylinder'), tube: () => setShape('tube'), plane: () => setShape('plane'),
+  box: () => setShape('box'), sphere: () => setShape('sphere'), icosphere: () => setShape('icosphere'), cylinder: () => setShape('cylinder'), tube: () => setShape('tube'), plane: () => setShape('plane'), cone: () => setShape('cone'), torus: () => setShape('torus'),
   editMode: () => setMode(mode === 'edit' ? 'select' : 'edit'),
   move: () => setTool('translate'), rotate: () => setTool('rotate'), scale: () => setTool('scale'),
   space: () => setSpace(gizmo.space === 'local' ? 'world' : 'local'),
