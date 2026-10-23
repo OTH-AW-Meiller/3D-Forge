@@ -4,12 +4,13 @@ import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { createGeometry, applyColors, outlineGeometry, nonIndexedPositions } from './model.js';
-import { MirrorMethods } from './edit-mirror.js';
-import { TopologyMethods } from './edit-topology.js';
-import { ChamferMethods } from './edit-chamfer.js';
-import { ExtrudeMethods } from './edit-extrude.js';
-import { SubdivideMethods } from './edit-subdivide.js';
+import { createGeometry, applyColors, outlineGeometry, nonIndexedPositions } from '../model.js';
+import { MirrorMethods } from './mirror.js';
+import { TopologyMethods } from './topology.js';
+import { ChamferMethods } from './chamfer.js';
+import { ExtrudeMethods } from './extrude.js';
+import { SubdivideMethods } from './subdivide.js';
+import { pointIn, segHit, shapeHit } from '../tools/region.js';
 
 // Re-exported so callers only need this module
 export { createGeometry, applyColors, outlineGeometry };
@@ -17,6 +18,14 @@ export { createGeometry, applyColors, outlineGeometry };
 const ORANGE = 0xff9020;
 
 const noRaycast = () => {};
+
+// Combines a selection set with a set of hits: set | extend | subtract | difference (toggle)
+export function applySelectOp(cur, hits, op) {
+  if (op === 'set') { cur.clear(); hits.forEach(i => cur.add(i)); return; }
+  if (op === 'extend') hits.forEach(i => cur.add(i));
+  else if (op === 'subtract') hits.forEach(i => cur.delete(i));
+  else if (op === 'difference') hits.forEach(i => { if (cur.has(i)) cur.delete(i); else cur.add(i); });
+}
 
 export class SubObjectEditor {
   constructor({ camera, dom, gizmo, scene, snap }) {
@@ -390,7 +399,7 @@ export class SubObjectEditor {
     return !hit || hit.distance > dist - (0.02 + dist * 0.003);
   }
 
-  pick(e, additive) {
+  pick(e, op = 'set') {
     const m = this.model, mesh = this.mesh;
     const rect = this.dom.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
@@ -445,11 +454,69 @@ export class SubObjectEditor {
       }
     }
 
-    if (!additive) { this.selV.clear(); this.selE.clear(); this.selF.clear(); }
-    if (id !== null) {
-      const set = this.kind === 'vertex' || (this.kind === 'edge' && typeof id === 'number') ? this.selV : this.kind === 'edge' ? this.selE : this.selF;
-      if (additive && set.has(id)) set.delete(id); else set.add(id);
+    const set = this.kind === 'vertex' || (this.kind === 'edge' && typeof id === 'number') ? this.selV : this.kind === 'edge' ? this.selE : this.selF;
+    if (op === 'set') { this.selV.clear(); this.selE.clear(); this.selF.clear(); }
+    applySelectOp(set, new Set(id !== null ? [id] : []), op);
+    this.refreshSelection();
+  }
+
+  // Region selection (polygon in canvas coordinates: rectangle, circle or lasso)
+  regionSelect(poly, op = 'set', touch = false) {
+    const m = this.model, mesh = this.mesh;
+    const rect = this.dom.getBoundingClientRect();
+    mesh.updateMatrixWorld(true);
+    this.camera.updateMatrixWorld(true);
+    const p = new THREE.Vector3();
+    const scr = w => {
+      p.copy(w).project(this.camera);
+      if (p.z <= -1 || p.z >= 1) return null;
+      return [(p.x * 0.5 + 0.5) * rect.width, (-p.y * 0.5 + 0.5) * rect.height];
+    };
+    const vw = i => new THREE.Vector3().fromArray(m.verts, 3 * i).applyMatrix4(mesh.matrixWorld);
+    // Vertex cache: world position, screen position, visibility
+    const cache = new Map();
+    const vinfo = i => {
+      let c = cache.get(i);
+      if (!c) { const w = vw(i); const s = scr(w); c = { w, s, in: !!s && pointIn(poly, s[0], s[1]), vis: null }; cache.set(i, c); }
+      return c;
+    };
+    const visible = c => (c.vis ??= this.isVisible(c.w));
+    // World point of the part of edge A-B inside the region, or null
+    const edgeTouch = (A, B) => {
+      if (!A.s || !B.s) return null;
+      const t = segHit(poly, A.s, B.s);
+      return t === null ? null : A.w.clone().lerp(B.w, t);
+    };
+    const hits = new Set();
+    let set;
+    if (this.kind === 'face') {
+      set = this.selF;
+      m.faces.forEach((f, id) => {
+        const tris = f.tris.map(t => [0, 1, 2].map(k => vinfo(m.corner[3 * t + k])));
+        const centroid = C => C[0].w.clone().add(C[1].w).add(C[2].w).divideScalar(3);
+        if (!touch) {
+          if (tris.length && tris.every(C => C.every(c => c.in)) && this.isVisible(centroid(tris[0]))) hits.add(id);
+          return;
+        }
+        for (const C of tris) {
+          if (C.some(c => !c.s)) continue;
+          if (shapeHit(poly, C.map(c => c.s)) && (this.isVisible(centroid(C)) || C.some(visible))) { hits.add(id); return; }
+        }
+      });
+    } else if (this.kind === 'edge') {
+      set = this.selE;
+      m.edges.forEach(ed => {
+        const A = vinfo(ed.a), B = vinfo(ed.b);
+        if (!touch) { if (A.in && B.in && visible(A) && visible(B)) hits.add(ed.key); return; }
+        const w = edgeTouch(A, B);
+        if (w && (A.in && visible(A) || B.in && visible(B) || this.isVisible(w))) hits.add(ed.key);
+      });
+    } else {
+      set = this.selV;
+      for (let i = 0; i < m.nVerts; i++) { const c = vinfo(i); if (c.in && visible(c)) hits.add(i); }
     }
+    if (op === 'set') { this.selV.clear(); this.selE.clear(); this.selF.clear(); }
+    applySelectOp(set, hits, op);
     this.refreshSelection();
   }
 }

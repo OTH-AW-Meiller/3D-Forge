@@ -1,5 +1,5 @@
 // Editor mixin: Catmull-Clark subdivision of the selected faces (one refinement level per call).
-import { edgeKey } from './model.js';
+import { edgeKey } from '../model.js';
 
 export class SubdivideMethods {
   canSubdivide() { return !!this.model && this.kind === 'face' && this.selF.size > 0; }

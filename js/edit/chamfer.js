@@ -1,7 +1,7 @@
 // Editor mixin: edge chamfer.
 import * as THREE from 'three';
-import { edgeKey } from './model.js';
-import { triangulatePoly, newellNormal } from './polygon.js';
+import { edgeKey } from '../model.js';
+import { triangulatePoly, newellNormal } from '../polygon.js';
 
 export class ChamferMethods {
   // Boundary loop of a face (null for holes, interior points or branching boundaries)

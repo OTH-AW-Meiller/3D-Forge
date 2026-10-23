@@ -4,12 +4,13 @@
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { SubObjectEditor, createGeometry, applyColors, outlineGeometry } from './subedit.js';
+import { rectPolygon, circlePolygon, pointIn, shapeHit } from './tools/region.js';
+import { SubObjectEditor, applySelectOp, createGeometry, applyColors, outlineGeometry } from './edit/editor.js';
 import { createStage } from './stage.js';
-import { booleanOp, fillHoles } from './csg.js';
+import { booleanOp, fillHoles } from './tools/csg.js';
 import { Model, nonIndexedPositions as nonIdx, edgeKey } from './model.js';
 import { nonIndexedPositions } from './model.js';
-import { remesh, skinOnly } from './remesh.js';
+import { remesh, skinOnly } from './tools/remesh.js';
 import { setupIO } from './io.js';
 import { setupShortcuts } from './shortcuts.js';
 import { SHAPES, defaultParams, normalizeParams, buildShape } from './shapes.js';
@@ -275,6 +276,18 @@ function select(mesh, additive = false) {
   syncPanel();
 }
 
+// Keeps the existing selection order (the first selected object matters for Bool)
+const keepOrder = set => [...selection.filter(o => set.has(o)), ...[...set].filter(o => !selection.includes(o))];
+function setSelectionList(list) {
+  selection.forEach(m => m.material.emissive.setHex(0x000000));
+  selection = list.filter(isPickable);
+  selected = selection[selection.length - 1] ?? null;
+  selection.forEach(m => m.material.emissive.setHex(0x222222));
+  attachGizmo();
+  updateToolbar();
+  syncPanel();
+}
+
 function syncPanel() {
   if (!selected) return;
   const m = selected;
@@ -401,6 +414,7 @@ function updateToolbar() {
   $('smooth').classList.toggle('active', smoothOpen);
   $('smoothRow').hidden = !smoothOpen;
   if (boolOpen) $('boolInfo').textContent = `A = ${selection[0].userData.name}, B = ${selection[1].userData.name} (A = first selected)`;
+  $('secSelTool').hidden = !(tool === 'select' && (mode === 'select' || mode === 'edit'));
   $('mEdit').classList.toggle('active', editing);
   $('gEdit').classList.toggle('open', editing);
   document.querySelectorAll('[data-sub]').forEach(b => b.disabled = !editing);
@@ -418,11 +432,33 @@ function updateToolbar() {
   if (!editing) { $('lblS').textContent = 'Scale'; $('lblR').textContent = 'Rot °'; }
 }
 
+let selectOp = 'set';
+function setSelectOp(op) {
+  selectOp = op;
+  document.querySelectorAll('[data-selop]').forEach(b => b.classList.toggle('active', b.dataset.selop === op));
+}
+document.querySelectorAll('[data-selop]').forEach(b => b.onclick = () => setSelectOp(b.dataset.selop));
+setSelectOp('set');
+let selShape = 'rect';
+function setSelShape(s) {
+  selShape = s;
+  document.querySelectorAll('[data-selshape]').forEach(b => b.classList.toggle('active', b.dataset.selshape === s));
+}
+document.querySelectorAll('[data-selshape]').forEach(b => b.onclick = () => setSelShape(b.dataset.selshape));
+setSelShape('rect');
+const SVGNS = 'http://www.w3.org/2000/svg';
+const selBox = document.createElementNS(SVGNS, 'svg');
+selBox.id = 'selBox';
+const selPoly = document.createElementNS(SVGNS, 'polygon');
+selBox.appendChild(selPoly);
+renderer.domElement.parentElement.appendChild(selBox);
+
 function setTool(t, temporary = false) {
   if (!temporary) toolBeforeModifier = null;
   tool = t;
   if (t !== 'select') gizmo.setMode(t);
   $('mSelect').classList.toggle('active', t === 'select');
+  $('secSelTool').hidden = !(t === 'select' && (mode === 'select' || mode === 'edit'));
   $('tMove').classList.toggle('active', t === 'translate');
   $('tRot').classList.toggle('active', t === 'rotate');
   $('tScale').classList.toggle('active', t === 'scale');
@@ -947,8 +983,58 @@ window.addEventListener('blur', () => {
 // Tell clicks from drags so orbiting does not place anything
 let down = null;
 const dom = renderer.domElement;
-dom.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled }; });
+// Click uses the chosen operation; a modifier turns Set into toggle (click) or extend (drag)
+const modHeld = e => e.shiftKey || e.ctrlKey || e.metaKey;
+const clickOp = e => (tool !== 'select' ? (modHeld(e) ? 'difference' : 'set') : selectOp === 'set' && modHeld(e) ? 'difference' : selectOp);
+const dragOp = e => (selectOp === 'set' && modHeld(e) ? 'extend' : selectOp);
+const canBoxSelect = () => tool === 'select' && ((mode === 'edit' && !editor.addMode) || mode === 'select');
+dom.addEventListener('pointerdown', e => {
+  down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled, box: e.button === 0 && canBoxSelect(), shape: selShape, path: [[e.clientX - dom.getBoundingClientRect().left, e.clientY - dom.getBoundingClientRect().top]] };
+  if (down.box) dom.setPointerCapture(e.pointerId);
+});
+// Selection region as a polygon in canvas coordinates
+function regionPolygon(d, e) {
+  const r = dom.getBoundingClientRect();
+  const x0 = d.x - r.left, y0 = d.y - r.top, x1 = e.clientX - r.left, y1 = e.clientY - r.top;
+  if (d.shape === 'circle') return circlePolygon(x0, y0, Math.hypot(x1 - x0, y1 - y0));
+  if (d.shape === 'lasso') return d.path.length > 2 ? d.path : null;
+  return rectPolygon(Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1));
+}
+function updateSelBox(e) {
+  if (down.shape === 'lasso') { const r = dom.getBoundingClientRect(); down.path.push([e.clientX - r.left, e.clientY - r.top]); }
+  const poly = regionPolygon(down, e);
+  if (!poly) return;
+  const box = dom.getBoundingClientRect(), par = dom.parentElement.getBoundingClientRect();
+  selBox.style.display = 'block';
+  selPoly.setAttribute('points', poly.map(([x, y]) => `${x + box.left - par.left},${y + box.top - par.top}`).join(' '));
+}
+// Object mode: projected bounding box inside (or, with touch, overlapping) the region
+function regionSelectObjects(poly, op, touch) {
+  const r = dom.getBoundingClientRect();
+  const hits = new Set();
+  const p = new THREE.Vector3();
+  camera.updateMatrixWorld(true);
+  boxes.filter(isPickable).forEach(o => {
+    o.updateMatrixWorld(true);
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      p.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(o.matrixWorld).project(camera);
+      if (p.z <= -1 || p.z >= 1) continue;
+      const x = (p.x * 0.5 + 0.5) * r.width, y = (-p.y * 0.5 + 0.5) * r.height;
+      bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x); by0 = Math.min(by0, y); by1 = Math.max(by1, y);
+    }
+    if (bx0 > bx1) return;
+    const quad = rectPolygon(bx0, by0, bx1, by1);
+    if (touch ? shapeHit(poly, quad) : quad.every(([x, y]) => pointIn(poly, x, y))) hits.add(o);
+  });
+  const cur = new Set(selection);
+  applySelectOp(cur, hits, op);
+  setSelectionList(keepOrder(cur));
+}
 dom.addEventListener('pointermove', e => {
+  if (down?.box && (e.buttons & 1) && (down.dragged || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8)) { down.dragged = true; updateSelBox(e); return; }
   if (mode === 'poly') {
     if (polyPlane && !e.buttons) { polyCursor = polyPointAt(e); polyRefresh(); }
     return;
@@ -964,11 +1050,21 @@ dom.addEventListener('pointerup', e => {
   if (!down) return;
   const click = down;
   down = null;
-  if (click.b !== 0 || Math.hypot(e.clientX - click.x, e.clientY - click.y) > 8) return;
+  selBox.style.display = 'none';
+  if (click.box && dom.hasPointerCapture(e.pointerId)) dom.releasePointerCapture(e.pointerId);
+  if (click.b !== 0) return;
+  if (click.dragged || Math.hypot(e.clientX - click.x, e.clientY - click.y) > 8) {
+    const poly = click.box && canBoxSelect() && regionPolygon(click, e);
+    if (poly) {
+      if (mode === 'edit') editor.regionSelect(poly, dragOp(e), $('selTouch').checked);
+      else regionSelectObjects(poly, dragOp(e), $('selTouch').checked);
+    }
+    return;
+  }
   const onGizmo = click.onGizmo;
   if (gizmo.dragging || onGizmo) return;
   if (mode === 'edit') {
-    if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, e.shiftKey || e.ctrlKey || e.metaKey);
+    if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, clickOp(e));
   } else if (mode === 'poly') {
     polyClick(e);
   } else if (mode === 'place') {
@@ -980,8 +1076,12 @@ dom.addEventListener('pointerup', e => {
   } else {
     setPointer(e);
     const hit = raycaster.intersectObjects(boxes.filter(isPickable), false)[0];
-    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
-    if (hit || !additive) select(hit ? hit.object : null, additive);
+    const op = clickOp(e);
+    const cur = new Set(selection);
+    if (op === 'set') cur.clear();
+    applySelectOp(cur, new Set(hit ? [hit.object] : []), op === 'set' ? 'extend' : op);
+    if (!hit && op === 'set' && !selection.length) return;
+    setSelectionList(keepOrder(cur));
   }
 });
 
@@ -1249,7 +1349,7 @@ function syncList() {
       const b = document.createElement('button');
       b.className = 'objFlag' + (m.userData[key] ? ' on' : '');
       b.title = title;
-      b.innerHTML = `<span class="ico" style="--icon:url(icons/${icons[m.userData[key] ? 1 : 0]}.svg)"></span>`;
+      b.innerHTML = `<span class="ico" style="--icon:url(../icons/${icons[m.userData[key] ? 1 : 0]}.svg)"></span>`;
       b.onclick = e => { e.stopPropagation(); toggleFlag(m, key); };
       return b;
     };

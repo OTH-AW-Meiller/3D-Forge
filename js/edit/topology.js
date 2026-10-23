@@ -1,6 +1,6 @@
 // Editor mixin: topology changes (insert vertex, connect vertices, remove, rebuild).
 import * as THREE from 'three';
-import { Model, applyColors, edgeKey } from './model.js';
+import { Model, applyColors, edgeKey } from '../model.js';
 
 export class TopologyMethods {
   // --- Add / remove ---------------------------------------------------

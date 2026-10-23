@@ -1,5 +1,5 @@
 // Editor mixin: mirror axes (X/Y/Z) and mirrored selection.
-import { edgeKey } from './model.js';
+import { edgeKey } from '../model.js';
 
 export class MirrorMethods {
   // --- Mirror ---------------------------------------------------------

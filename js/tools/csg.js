@@ -1,7 +1,7 @@
 // Boolean operations on triangle meshes (BSP-tree CSG, after Evan Wallace's csg.js).
 // Input and output are non-indexed triangle position arrays in the same (world) space.
 import * as THREE from 'three';
-import { triangulatePoly, newellNormal } from './polygon.js';
+import { triangulatePoly, newellNormal } from '../polygon.js';
 
 const EPS = 1e-5;
 const COPLANAR = 0, FRONT = 1, BACK = 2, SPANNING = 3;

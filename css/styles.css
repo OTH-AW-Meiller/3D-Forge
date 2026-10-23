@@ -109,3 +109,9 @@ kbd { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; backgr
 #splash .copy { color: #6f7690; font-size: 11px; }
 @keyframes float { 50% { transform: translateY(-8px); } }
 @keyframes pulse { 50% { opacity: .3; } }
+
+#selOpRow, #selShapeRow { display: flex; gap: 4px; }
+#selOpRow button, #selShapeRow button { flex: 1; padding: 5px 0; }
+#selOpRow .ico, #selShapeRow .ico { width: 20px; height: 20px; }
+#selBox { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 3; }
+#selBox polygon { fill: #4c8bf533; stroke: #7ab0ff; stroke-width: 1; stroke-dasharray: 5 3; }
