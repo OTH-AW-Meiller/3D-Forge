@@ -480,6 +480,7 @@ $('selGroupSave').onclick = () => {
   $('selGroupName').value = '';
   $('status').textContent = `Group "${name}" saved (${list.length})`;
 };
+$('selGroupName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('selGroupSave').click(); } });
 $('selGroupApply').onclick = () => {
   const name = $('selGroupList').value, g = groupMap()?.get(name);
   if (!g) return;
