@@ -427,7 +427,7 @@ function updateToolbar() {
   refreshGroupList();
   if (xformPivot && (selection.length !== 1 || editing)) { xformPivot = false; $('xformPivot').classList.remove('active'); }
   $('pivotEditRow').hidden = !editing;
-  $('alignPivot').disabled = !editing || editor.selV.size + editor.selE.size + editor.selF.size !== 1;
+  $('alignPivot').disabled = !editing || editor.selCount() !== 1;
   $('pivotObjRow').hidden = editing;
   $('xformPivot').disabled = selection.length !== 1;
   $('selLoopRow').hidden = !(editing && editor.kind === 'edge');
@@ -525,7 +525,7 @@ function renameGroups(from, to) {
   for (const g of objGroups.values()) g.forEach((n, i) => { if (n === from) g[i] = to; });
 }
 $('alignPivot').onclick = () => {
-  if (!editor.active || editor.selV.size + editor.selE.size + editor.selF.size !== 1) return;
+  if (!editor.active || editor.selCount() !== 1) return;
   if (editor.alignPivotToSelection()) { commit(); $('status').textContent = 'Pivot aligned'; }
 };
 

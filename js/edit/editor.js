@@ -141,6 +141,7 @@ export class SubObjectEditor {
     return '#' + this.mesh.userData.baseColor.getHexString();
   }
 
+  selCount() { return (this.kind === 'vertex' ? this.selV : this.kind === 'edge' ? this.selE : this.selF).size; }
   hasSelection() { return this.selV.size + this.selE.size + this.selF.size > 0; }
 
   // --- Overlays -------------------------------------------------------
