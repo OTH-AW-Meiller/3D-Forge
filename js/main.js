@@ -426,9 +426,9 @@ function updateToolbar() {
   $('secSelTool').hidden = !(tool === 'select' && (mode === 'select' || mode === 'edit'));
   refreshGroupList();
   if (xformPivot && (selection.length !== 1 || editing)) { xformPivot = false; $('xformPivot').classList.remove('active'); }
-  $('pivotEditRow').hidden = !editing;
+  $('alignPivot').hidden = !editing;
   $('alignPivot').disabled = !editing || editor.selCount() !== 1;
-  $('pivotObjRow').hidden = editing;
+  $('xformPivot').hidden = editing;
   $('xformPivot').disabled = selection.length !== 1;
   $('selLoopRow').hidden = !(editing && editor.kind === 'edge');
   editor.loopMode = $('selLoop').checked;
