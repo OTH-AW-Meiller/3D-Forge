@@ -126,6 +126,8 @@ kbd { display: inline-block; font: 11px/1 ui-monospace, Menlo, monospace; backgr
 #selBox { position: absolute; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 3; }
 #selBox polygon { fill: #4c8bf533; stroke: #7ab0ff; stroke-width: 1; stroke-dasharray: 5 3; }
 
+#latDivRow { display: flex; gap: 4px; }
+#latDivRow button { flex: 1; padding: 5px 0; }
 #pivotRow { align-items: center; }
 #pivotRow .pivotChk { display: inline-flex; align-items: center; gap: 3px; }
 #pivotRow .ico { width: 18px; height: 18px; }

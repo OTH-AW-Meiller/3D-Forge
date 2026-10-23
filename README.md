@@ -103,6 +103,7 @@ The complete, always up-to-date list is in the app (`?`).
 | `js/edit/mirror.js`, `topology.js`, `chamfer.js`, `extrude.js`, `subdivide.js` | Edit tools, mixed into the editor |
 | `js/tools/csg.js` | Boolean (CSG) algorithm for meshes |
 | `js/tools/remesh.js` | Remesh / skin-only |
+| `js/tools/lattice.js` | Lattice (free-form deformation cage) |
 | `js/tools/region.js` | Selection regions (rectangle, circle, lasso) as polygons |
 
 ## Limitations

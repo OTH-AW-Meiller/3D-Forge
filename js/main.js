@@ -8,6 +8,7 @@ import { rectPolygon, circlePolygon, pointIn, shapeHit } from './tools/region.js
 import { SubObjectEditor, applySelectOp, createGeometry, applyColors, outlineGeometry } from './edit/editor.js';
 import { createStage } from './stage.js';
 import { booleanOp, fillHoles } from './tools/csg.js';
+import { Lattice } from './tools/lattice.js';
 import { Model, nonIndexedPositions as nonIdx, edgeKey } from './model.js';
 import { nonIndexedPositions } from './model.js';
 import { remesh, skinOnly } from './tools/remesh.js';
@@ -29,7 +30,9 @@ const editor = new SubObjectEditor({ camera, dom: renderer.domElement, gizmo, sc
 editor.onSelectionChange = () => { updateToolbar(); syncGizmoForModifier(); };
 editor.onMessage = msg => { $('status').textContent = msg; setTimeout(() => { $('status').textContent = `${boxes.length} objects`; }, 2500); };
 gizmo.addEventListener('dragging-changed', e => orbit.enabled = !e.value);
-gizmo.addEventListener('objectChange', () => { if (editor.active) return; applySnapToSelection(); syncPanel(); });
+gizmo.addEventListener('objectChange', () => {
+  if (gizmo.object === latticeProxy && lattice) { lattice.setPointWorld(latticeSel, latticeProxy.position); return; }
+  if (editor.active) return; applySnapToSelection(); syncPanel(); });
 
 const boxes = [];
 let selected = null; // primary object (last selected)
@@ -243,9 +246,18 @@ function updateSelFrame() {
 }
 let xformPivot = false;
 const pivotProxy = new THREE.Object3D();
+const latticeProxy = new THREE.Object3D();
+scene.add(latticeProxy);
 scene.add(pivotProxy);
 function attachGizmo() {
-  if (xformPivot && selection.length === 1 && !editor.active) {
+  if (latticeOpen) {
+    if (latticeSel >= 0) {
+      lattice.worldPoint(latticeSel, latticeProxy.position);
+      latticeProxy.quaternion.identity();
+      latticeProxy.updateMatrixWorld(true);
+      gizmo.attach(latticeProxy);
+    } else gizmo.detach();
+  } else if (xformPivot && selection.length === 1 && !editor.active) {
     pivotProxy.position.copy(selected.position);
     pivotProxy.quaternion.copy(selected.quaternion);
     pivotProxy.scale.set(1, 1, 1);
@@ -408,6 +420,11 @@ function updateToolbar() {
   $('mergeBtn').disabled = !canMerge();
   $('mergeBtn').classList.toggle('active', mergeOpen);
   $('mergeRow').hidden = !mergeOpen;
+  if (latticeOpen && (selection.length !== 1 || selected !== lattice?.mesh || editing)) closeLattice();
+  $('latticeBtn').disabled = selection.length !== 1 || editing;
+  $('latticeBtn').classList.toggle('active', latticeOpen);
+  $('latticeRow').hidden = !latticeOpen;
+  document.querySelectorAll('[data-latdiv]').forEach(b => b.classList.toggle('active', +b.dataset.latdiv === latticeDiv));
   if (!canSmooth()) remeshOpen = false;
   $('remeshBtn').disabled = !canSmooth();
   $('flipBtn').disabled = !canSmooth();
@@ -664,6 +681,7 @@ function duplicateSelected() {
 }
 // Hide edges: merges neighbouring faces whose angle is below the limit
 let smoothOpen = false;
+let latticeOpen = false, lattice = null, latticeSel = -1, latticeDiv = 3;
 const canSmooth = () => mode === 'select' && selection.length > 0;
 function smoothMesh(mesh, deg) {
   const um = mesh.userData;
@@ -1073,12 +1091,71 @@ $('bool').onclick = toggleBool;
 $('smooth').onclick = () => { if (canSmooth()) toggleTool('smooth'); };
 // Only one tool panel can be open at a time
 function toggleTool(name) {
-  const wasOpen = { bool: boolOpen, merge: mergeOpen, remesh: remeshOpen, array: arrayOpen, smooth: smoothOpen }[name];
+  const wasOpen = { lattice: latticeOpen, bool: boolOpen, merge: mergeOpen, remesh: remeshOpen, array: arrayOpen, smooth: smoothOpen }[name];
+  if (name !== 'lattice') closeLattice();
   boolOpen = mergeOpen = remeshOpen = arrayOpen = smoothOpen = false;
+  if (name === 'lattice') { wasOpen ? closeLattice() : openLattice(); updateToolbar(); return; }
   if (!wasOpen) ({ bool: () => boolOpen = true, merge: () => mergeOpen = true, remesh: () => remeshOpen = true, array: () => arrayOpen = true, smooth: () => smoothOpen = true })[name]();
   updateToolbar();
 }
 $('smoothApply').onclick = applySmooth;
+// Lattice: preview on the geometry, bake into the mesh on Apply
+function openLattice() {
+  if (selection.length !== 1 || mode === 'edit') return;
+  lattice = new Lattice(selected, latticeDiv);
+  latticeOpen = true;
+  latticeSel = -1;
+  if (tool !== 'translate') setTool('translate');
+  attachGizmo();
+}
+function closeLattice() {
+  if (!latticeOpen) return;
+  latticeOpen = false;
+  latticeSel = -1;
+  lattice?.dispose();
+  lattice = null;
+  gizmo.object === latticeProxy && attachGizmo();
+}
+function latticePick(e) {
+  const r = dom.getBoundingClientRect(), p = new THREE.Vector3();
+  let best = -1, bd = 16;
+  for (let i = 0; i < lattice.count; i++) {
+    lattice.worldPoint(i, p).project(camera);
+    const d = Math.hypot((p.x + 1) / 2 * r.width + r.left - e.clientX, (1 - p.y) / 2 * r.height + r.top - e.clientY);
+    if (p.z < 1 && d < bd) { bd = d; best = i; }
+  }
+  latticeSel = best;
+  if (best >= 0 && tool !== 'translate') setTool('translate');
+  attachGizmo();
+}
+function applyLattice() {
+  if (!latticeOpen) return;
+  const mesh = lattice.mesh, lat = lattice;
+  lat.restore();
+  editor.enter(mesh);
+  const v = editor.model.verts, q = new THREE.Vector3();
+  for (let i = 0; i < editor.model.nVerts * 3; i += 3) { lat.deform(v[i], v[i + 1], v[i + 2], q); v[i] = q.x; v[i + 1] = q.y; v[i + 2] = q.z; }
+  editor.changed = true;
+  editor.applyVerts();
+  editor.exit();
+  latticeOpen = false;
+  latticeSel = -1;
+  lat.dispose(false);
+  lattice = null;
+  if (shading === 'edges') applyShading(mesh);
+  attachGizmo();
+  commit();
+  updateToolbar();
+  syncPanel();
+}
+$('latticeBtn').onclick = () => { if (selection.length === 1 && mode !== 'edit') toggleTool('lattice'); };
+$('latticeApply').onclick = applyLattice;
+$('latticeReset').onclick = () => { if (lattice) { lattice.reset(); latticeSel = -1; attachGizmo(); } };
+document.querySelectorAll('[data-latdiv]').forEach(b => b.onclick = () => {
+  latticeDiv = +b.dataset.latdiv;
+  if (lattice) { lattice.setDivisions(latticeDiv); latticeSel = -1; attachGizmo(); }
+  updateToolbar();
+});
 $('closeHoles').onclick = closeHolesSelected;
 $('boolApply').onclick = applyBool;
 $('del').onclick = deleteSelected;
@@ -1097,7 +1174,7 @@ const dom = renderer.domElement;
 const modHeld = e => e.shiftKey || e.ctrlKey || e.metaKey;
 const clickOp = e => (tool !== 'select' ? (modHeld(e) ? 'difference' : 'set') : selectOp === 'set' && modHeld(e) ? 'difference' : selectOp);
 const dragOp = e => (selectOp === 'set' && modHeld(e) ? 'extend' : selectOp);
-const canBoxSelect = () => tool === 'select' && ((mode === 'edit' && !editor.addMode) || mode === 'select');
+const canBoxSelect = () => tool === 'select' && !latticeOpen && ((mode === 'edit' && !editor.addMode) || mode === 'select');
 dom.addEventListener('pointerdown', e => {
   down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled, box: e.button === 0 && canBoxSelect(), shape: selShape, path: [[e.clientX - dom.getBoundingClientRect().left, e.clientY - dom.getBoundingClientRect().top]] };
   if (down.box) dom.setPointerCapture(e.pointerId);
@@ -1173,7 +1250,9 @@ dom.addEventListener('pointerup', e => {
   }
   const onGizmo = click.onGizmo;
   if (gizmo.dragging || onGizmo) return;
-  if (mode === 'edit') {
+  if (latticeOpen) {
+    latticePick(e);
+  } else if (mode === 'edit') {
     if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, clickOp(e));
   } else if (mode === 'poly') {
     polyClick(e);
@@ -1390,7 +1469,7 @@ function redo() {
 }
 $('undo').onclick = undo;
 $('redo').onclick = redo;
-gizmo.addEventListener('dragging-changed', e => { if (!e.value) commit(); });
+gizmo.addEventListener('dragging-changed', e => { if (!e.value && gizmo.object !== latticeProxy) commit(); });
 for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz', 'col']) $(id).addEventListener('change', e => { if (!e.scrub) commit(); });
 // 3D navigation: pivot = world origin or selection
 let pivotMode = 'origin';

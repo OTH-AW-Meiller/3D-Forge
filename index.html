@@ -115,6 +115,7 @@
   <div class="group" id="gTools">
     <button id="mTools" title="Tools"><i><span class="ico" style="--icon:url(../icons/tools.svg)"></span></i>Tools</button>
     <div class="flyout">
+      <button id="latticeBtn" title="Deform the selected object with a cage of control points"><i><span class="ico" style="--icon:url(../icons/lattice.svg)"></span></i>Lattice</button>
       <button id="smooth" title="Hide edges between faces below an angle (Shift+H)"><i><span class="ico" style="--icon:url(../icons/smooth.svg)"></span></i>Edges</button>
       <button id="closeHoles" title="Close open holes of the selected objects (Shift+K)"><i><span class="ico" style="--icon:url(../icons/holes.svg)"></span></i>Close holes</button>
       <button id="arrayBtn" title="Create several copies of the selected objects"><i><span class="ico" style="--icon:url(../icons/array.svg)"></span></i>Array</button>
@@ -208,6 +209,12 @@
       <div class="row"><label title="Combine the objects with a boolean union instead of just joining the meshes"><input type="checkbox" id="mergeUnion"> Boolean union</label></div>
       <div class="hint">Off: the objects are joined into one mesh unchanged. On: overlapping volumes are fused and interior geometry is removed (needs closed meshes).</div>
       <div class="row"><button id="mergeApply">Apply</button> <span class="hint" id="mergeMsg"></span></div>
+    </div>
+    <div id="latticeRow" hidden>
+      <div class="row"><b>Lattice</b></div>
+      <div class="row" id="latDivRow"><button data-latdiv="2" title="2 x 2 x 2: corners only">2×2×2</button> <button data-latdiv="3" title="3 x 3 x 3 control points">3×3×3</button> <button data-latdiv="4" title="4 x 4 x 4 control points">4×4×4</button></div>
+      <div class="hint">Click a control point, then drag it with the Move gizmo. Changing the division resets the cage.</div>
+      <div class="row"><button id="latticeApply">Apply</button> <button id="latticeReset">Reset</button></div>
     </div>
     <div id="remeshRow" hidden>
       <div class="row"><b>Remesh</b></div>
