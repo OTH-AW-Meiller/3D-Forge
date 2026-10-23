@@ -9,6 +9,7 @@ import { SubObjectEditor, applySelectOp, createGeometry, applyColors, outlineGeo
 import { createStage } from './stage.js';
 import { booleanOp, fillHoles } from './tools/csg.js';
 import { Lattice } from './tools/lattice.js';
+import { registerWebMCP } from './webmcp.js';
 import { Model, nonIndexedPositions as nonIdx, edgeKey } from './model.js';
 import { nonIndexedPositions } from './model.js';
 import { remesh, skinOnly } from './tools/remesh.js';
@@ -1100,13 +1101,15 @@ function toggleTool(name) {
 }
 $('smoothApply').onclick = applySmooth;
 // Lattice: preview on the geometry, bake into the mesh on Apply
-function openLattice() {
+function openLattice(div) {
   if (selection.length !== 1 || mode === 'edit') return;
+  if (div) latticeDiv = div;
   lattice = new Lattice(selected, latticeDiv);
   latticeOpen = true;
   latticeSel = -1;
   if (tool !== 'translate') setTool('translate');
   attachGizmo();
+  return lattice;
 }
 function closeLattice() {
   if (!latticeOpen) return;
@@ -1597,3 +1600,10 @@ $('helpKeysBtn').addEventListener('click', () => $('helpKeysDlg').showModal());
 $('helpEditBtn').addEventListener('click', () => $('helpEditDlg').showModal());
 document.querySelectorAll('dialog.help [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
 document.querySelectorAll('.subhead').forEach(b => b.addEventListener('click', e => e.stopPropagation()));
+
+registerWebMCP({
+  boxes, editor, SHAPES, defaultParams, addBox, select, setSelectionList, setMode, setSub, commit, undo, redo, clearAll,
+  deleteSelected, duplicateSelected, renameGroups, syncList, applyColors, baseHex, updateToolbar,
+  applyBool, mergeSelected, applyRemesh, applyArray, flipSelected, closeHoles: closeHolesSelected, openLattice, closeLattice, applyLattice,
+  mode: () => mode, tool: () => tool, selection: () => selection, refresh: () => { updateToolbar(); syncPanel(); },
+});
