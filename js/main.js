@@ -647,6 +647,16 @@ for (const id of ['px', 'py', 'pz', 'sx', 'sy', 'sz', 'rx', 'ry', 'rz']) {
     if (!selected || editor.active || selection.length > 1) return;
     const v = id => +$(id).value || 0;
     const r = THREE.MathUtils.degToRad;
+    if (xformPivot && (id[0] === 'p' || id[0] === 'r')) {
+      const pos = new THREE.Vector3(v('px'), v('py'), v('pz'));
+      const rot = new THREE.Euler(r(v('rx')), r(v('ry')), r(v('rz')), selected.rotation.order);
+      editor.setObjectPivot(selected,
+        id[0] === 'p' ? pos : selected.position,
+        id[0] === 'r' ? new THREE.Quaternion().setFromEuler(rot) : selected.quaternion);
+      if (shading === 'edges') applyShading(selected);
+      attachGizmo();
+      return;
+    }
     selected.position.set(v('px'), v('py'), v('pz'));
     selected.scale.set(Math.max(0.01, v('sx')), Math.max(0.01, v('sy')), Math.max(0.01, v('sz')));
     selected.rotation.set(r(v('rx')), r(v('ry')), r(v('rz')));

@@ -27,6 +27,7 @@ Then open <http://localhost:8765/index.html>. An internet connection is required
 
 ### Object mode
 - Select, move, rotate and scale with a gizmo (global or local orientation)
+- **Transform pivot**: move or rotate only an object's pivot while keeping its shape in place; numeric position and rotation inputs do the same when this mode is active
 - A yellow frame shows the extent of the selected object(s)
 - Multi-selection: `Shift`/`Ctrl`/`Cmd`+click in the view or in the object list toggles objects, `Ctrl+A` selects all; the gizmo transforms the whole selection, and duplicate, delete and colour apply to all selected objects
 - Numeric position / scale / rotation / colour fields in the side panel; all number fields can be changed by dragging the mouse up/down inside them (`Shift` = fine)
