@@ -25,6 +25,10 @@ button.active { background: #2f6fdb; border-color: #4c8bf5; color: #fff; }
 .row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
 .grid3 { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px; align-items: center; margin-bottom: 4px; }
 input[type=number] { width: 100%; box-sizing: border-box; background: #1e2127; color: #ddd; border: 1px solid #4b5262; border-radius: 3px; padding: 3px; }
+input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 15px; height: 15px; margin: 0 3px 0 0; vertical-align: -3px; background: #1e2127; border: 1px solid #4b5262; border-radius: 3px; cursor: pointer; display: inline-grid; place-content: center; }
+input[type=checkbox]:checked { background: #4c8bf5; border-color: #4c8bf5; }
+input[type=checkbox]:checked::after { content: ''; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+input[type=checkbox]:disabled { opacity: .45; cursor: default; }
 input[type=color] { width: 44px; height: 26px; padding: 0; border: none; background: none; }
 .hint { font-size: 12px; color: #8b93a1; line-height: 1.5; }
 #navWrap { position: absolute; top: 40px; right: 270px; display: flex; align-items: center; gap: 6px; z-index: 2; }
