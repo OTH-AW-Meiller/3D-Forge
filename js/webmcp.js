@@ -225,6 +225,14 @@ export function registerWebMCP(app) {
   define('edit_subdivide', 'Subdivide the selected faces (Catmull-Clark).', {},
     sub('Subdivide', () => editor.canSubdivide(), () => { if (!editor.subdivide()) throw new Error('Subdivide failed'); }));
 
+  define('edit_face_color', 'Color the selected faces (face kind only).', { color: { ...str, description: 'Hex color like #ffffff' } }, a => {
+    needEdit();
+    if (editor.kind !== 'face' || !editor.selF.size) throw new Error('Select faces first');
+    editor.setFaceColor(a.color);
+    app.commit();
+    return selState();
+  }, { required: ['color'] });
+
   define('align_pivot', 'Move the object pivot to the single selected vertex / edge / face (position and/or orientation); the shape stays in place.', {
     position: { type: 'boolean', description: 'default true' }, rotation: { type: 'boolean', description: 'default false' },
   }, a => {
