@@ -158,6 +158,12 @@
     <div class="row" id="selOpRow"><button data-selop="set" title="Set: replace the selection"><span class="ico" style="--icon:url(../icons/sel-set.svg)"></span></button> <button data-selop="extend" title="Extend: add to the selection"><span class="ico" style="--icon:url(../icons/sel-extend.svg)"></span></button> <button data-selop="subtract" title="Subtract: remove from the selection"><span class="ico" style="--icon:url(../icons/sel-subtract.svg)"></span></button></div>
     <div class="row"><label title="On: items only touched by the selection shape are selected too. Off: items must lie completely inside."><input type="checkbox" id="selTouch"> Intersect (also partly covered)</label></div>
     <div class="row" id="selLoopRow" hidden><label title="Edge mode: clicking an edge selects its whole edge loop"><input type="checkbox" id="selLoop"> Loop (select edge loops)</label></div>
+    <div class="row" id="selGroupRow">
+      <input type="text" id="selGroupName" placeholder="Group name" maxlength="40" title="Name for the current selection"><button id="selGroupSave" title="Save the current selection under this name">Save</button>
+    </div>
+    <div class="row" id="selGroupRow2">
+      <select id="selGroupList" title="Saved selections (objects, or vertices / edges / faces in edit mode)"></select><button id="selGroupApply" title="Select the group (uses Set / Extend / Subtract)">Select</button><button id="selGroupDel" title="Delete the group">Delete</button>
+    </div>
     <div class="hint">Click, or drag a rectangle / circle / lasso (shape buttons). Shift/Ctrl+click toggles, Shift/Ctrl+drag extends (with Set).</div>
   </div>
 

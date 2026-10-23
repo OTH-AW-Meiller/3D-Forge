@@ -47,6 +47,7 @@ export class TopologyMethods {
     this.disposeOverlays();
     this.buildOverlays();
     this.selV.clear(); this.selE.clear(); this.selF.clear();
+    this.onRebuild?.();
     return used;
   }
 

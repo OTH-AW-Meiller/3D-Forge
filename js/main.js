@@ -415,6 +415,7 @@ function updateToolbar() {
   $('smoothRow').hidden = !smoothOpen;
   if (boolOpen) $('boolInfo').textContent = `A = ${selection[0].userData.name}, B = ${selection[1].userData.name} (A = first selected)`;
   $('secSelTool').hidden = !(tool === 'select' && (mode === 'select' || mode === 'edit'));
+  refreshGroupList();
   $('selLoopRow').hidden = !(editing && editor.kind === 'edge');
   editor.loopMode = $('selLoop').checked;
   $('mEdit').classList.toggle('active', editing);
@@ -442,6 +443,71 @@ function setSelectOp(op) {
 document.querySelectorAll('[data-selop]').forEach(b => b.onclick = () => setSelectOp(b.dataset.selop));
 setSelectOp('set');
 $('selLoop').addEventListener('change', () => { editor.loopMode = $('selLoop').checked; });
+
+// Named selection groups. Objects are stored by name; edit-mode groups per object name and sub-object kind.
+const objGroups = new Map();
+const editGroups = new Map();
+const groupMap = (create = false) => {
+  if (mode !== 'edit') return objGroups;
+  const k = editor.mesh.userData.name + '|' + editor.kind;
+  if (!editGroups.has(k) && create) editGroups.set(k, new Map());
+  return editGroups.get(k);
+};
+const editSet = () => (editor.kind === 'vertex' ? editor.selV : editor.kind === 'edge' ? editor.selE : editor.selF);
+let groupListKey = '';
+function refreshGroupList(force = false) {
+  const sel = $('selGroupList');
+  const names = mode === 'edit' && !editor.mesh ? [] : [...(groupMap()?.keys() ?? [])];
+  const key = (mode === 'edit' ? editor.mesh?.userData.name + editor.kind : 'obj') + '\n' + names.join('\n');
+  const has = names.length > 0;
+  $('selGroupApply').disabled = $('selGroupDel').disabled = !has;
+  if (!force && key === groupListKey) return;
+  groupListKey = key;
+  const cur = sel.value;
+  sel.innerHTML = '';
+  for (const n of names) sel.add(new Option(n, n));
+  if (!has) sel.add(new Option('(no groups)', ''));
+  if (names.includes(cur)) sel.value = cur;
+}
+$('selGroupSave').onclick = () => {
+  const name = $('selGroupName').value.trim();
+  const list = mode === 'edit' ? [...editSet()] : selection.map(m => m.userData.name);
+  if (!name) { $('status').textContent = 'Enter a group name first'; return; }
+  if (!list.length) { $('status').textContent = 'Nothing selected'; return; }
+  groupMap(true).set(name, list);
+  refreshGroupList(true);
+  $('selGroupList').value = name;
+  $('status').textContent = `Group "${name}" saved (${list.length})`;
+};
+$('selGroupApply').onclick = () => {
+  const name = $('selGroupList').value, g = groupMap()?.get(name);
+  if (!g) return;
+  if (mode === 'edit') {
+    const m = editor.model;
+    const ok = { vertex: i => i < m.nVerts, edge: k => m.edgeByKey.has(k), face: f => m.faces.has(f) }[editor.kind];
+    if (selectOp === 'set') { editor.selV.clear(); editor.selE.clear(); editor.selF.clear(); }
+    applySelectOp(editSet(), new Set(g.filter(ok)), selectOp);
+    editor.refreshSelection();
+  } else {
+    const hits = new Set(boxes.filter(b => g.includes(b.userData.name)));
+    const cur = new Set(selection);
+    applySelectOp(cur, hits, selectOp);
+    setSelectionList(keepOrder(cur));
+  }
+};
+$('selGroupList').onchange = () => $('selGroupApply').click();
+$('selGroupDel').onclick = () => {
+  const g = groupMap(), name = $('selGroupList').value;
+  if (g?.delete(name)) { refreshGroupList(true); $('status').textContent = `Group "${name}" deleted`; }
+};
+editor.onRebuild = () => {
+  const n = editor.mesh.userData.name + '|';
+  for (const k of [...editGroups.keys()]) if (k.startsWith(n)) editGroups.delete(k);
+};
+function renameGroups(from, to) {
+  for (const [k, v] of [...editGroups]) if (k.startsWith(from + '|')) { editGroups.delete(k); editGroups.set(to + k.slice(from.length), v); }
+  for (const g of objGroups.values()) g.forEach((n, i) => { if (n === from) g[i] = to; });
+}
 let selShape = 'rect';
 function setSelShape(s) {
   selShape = s;
@@ -1345,7 +1411,7 @@ function syncList() {
     inp.onblur = () => {
       inp.readOnly = true;
       const v = inp.value.trim();
-      if (v && v !== m.userData.name) { m.userData.name = ''; m.userData.name = uniqueName(v); commit(); }
+      if (v && v !== m.userData.name) { const old = m.userData.name; m.userData.name = ''; m.userData.name = uniqueName(v); renameGroups(old, m.userData.name); commit(); }
       inp.value = m.userData.name;
     };
     const flag = (key, icons, title) => {
