@@ -1150,7 +1150,7 @@ function applyLattice() {
 }
 $('latticeBtn').onclick = () => { if (selection.length === 1 && mode !== 'edit') toggleTool('lattice'); };
 $('latticeApply').onclick = applyLattice;
-$('latticeReset').onclick = () => { if (lattice) { lattice.reset(); latticeSel = -1; attachGizmo(); } };
+$('latticeReset').onclick = () => { closeLattice(); updateToolbar(); };
 document.querySelectorAll('[data-latdiv]').forEach(b => b.onclick = () => {
   latticeDiv = +b.dataset.latdiv;
   if (lattice) { lattice.setDivisions(latticeDiv); latticeSel = -1; attachGizmo(); }
