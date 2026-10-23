@@ -292,7 +292,7 @@ export class SubObjectEditor {
   }
 
   // Pivot of the current selection: centroid, Y = normal
-  alignPivotToSelection() {
+  alignPivotToSelection(usePos = true, useRot = true) {
     const vids = this.transformVids();
     if (!vids.size) return false;
     this.mesh.updateMatrixWorld(true);
@@ -300,6 +300,8 @@ export class SubObjectEditor {
     vids.forEach(i => c.add(p.fromArray(this.model.verts, 3 * i)));
     c.divideScalar(vids.size).applyMatrix4(this.mesh.matrixWorld);
     this.selectionQuaternion(q);
+    if (!usePos) c.copy(this.mesh.position);
+    if (!useRot) q.copy(this.mesh.quaternion);
     this.setPivotWorld(c, q);
     this.updatePivot();
     return true;

@@ -526,7 +526,7 @@ function renameGroups(from, to) {
 }
 $('alignPivot').onclick = () => {
   if (!editor.active || editor.selCount() !== 1) return;
-  if (editor.alignPivotToSelection()) { commit(); $('status').textContent = 'Pivot aligned'; }
+  if (editor.alignPivotToSelection($('pivotPos').checked, $('pivotRot').checked)) { commit(); $('status').textContent = 'Pivot aligned'; }
 };
 
 // Object mode: the gizmo works on a proxy; on release the pivot of the object follows and the shape stays in place
@@ -542,7 +542,9 @@ function setXformPivot(on) {
 $('xformPivot').onclick = () => setXformPivot(!xformPivot);
 gizmo.addEventListener('dragging-changed', e => {
   if (e.value || !xformPivot || gizmo.object !== pivotProxy || !selected) return;
-  editor.setObjectPivot(selected, pivotProxy.position, pivotProxy.quaternion);
+  editor.setObjectPivot(selected,
+    $('pivotPos').checked ? pivotProxy.position : selected.position,
+    $('pivotRot').checked ? pivotProxy.quaternion : selected.quaternion);
   if (shading === 'edges') applyShading(selected);
   attachGizmo();
   syncPanel();
