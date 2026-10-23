@@ -142,16 +142,17 @@ export function parse3ds(buffer) {
 
 // Wires up the File menu: JSON/3DS/OBJ/STL/glTF export and import.
 // ctx: { boxes (live array of meshes), addBox, applyColors, clearAll, commit, baseHex, round }
-export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex, round }) {
+export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex, round, getGroups, setGroups }) {
   // Import / Export
   $('exp').onclick = () => {
-    const data = boxes.map(m => ({
+    const objects = boxes.map(m => ({
       name: m.userData.name, position: m.position.toArray().map(round), size: m.scale.toArray().map(round),
       rotation: [m.rotation.x, m.rotation.y, m.rotation.z].map(round), color: baseHex(m), type: m.userData.type, params: m.userData.params,
       ...(m.userData.hidden && { hidden: true }), ...(m.userData.locked && { locked: true }),
       ...(m.userData.custom && { positions: Array.from(m.userData.model.positions, v => Math.round(v * 1e4) / 1e4), faces: Array.from(m.userData.model.faceOfTri) }),
       ...(m.userData.model?.faceColors.size && { faceColors: [...m.userData.model.faceColors] })
     }));
+    const data = { format: 'scene', objects, selectionGroups: getGroups() };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     a.download = 'szene.json';
@@ -340,8 +341,11 @@ export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex,
         const gltf = await new Promise((res, rej) => new GLTFLoader().parse(data, '', res, rej));
         addImported(meshesOf(gltf.scene));
       } else {
-        const data = JSON.parse(await f.text());
+        const parsed = JSON.parse(await f.text());
+        // Older files are a plain array of objects
+        const data = Array.isArray(parsed) ? parsed : parsed.objects;
         clearAll();
+        setGroups(Array.isArray(parsed) ? null : parsed.selectionGroups);
         for (const b of data) addBox({ position: new THREE.Vector3(...b.position), size: new THREE.Vector3(...b.size),
           color: b.color, rotation: b.rotation, type: b.type, params: b.params, positions: b.positions, faces: b.faces, faceColors: b.faceColors, name: b.name, hidden: b.hidden, locked: b.locked });
         commit();

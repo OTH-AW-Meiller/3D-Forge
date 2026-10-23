@@ -1206,7 +1206,18 @@ setupShortcuts({
   about: () => $('logoBtn').click(),
 }, { edit: () => mode === 'edit', sel: () => !!selected });
 
-setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex, round });
+setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex, round,
+  getGroups: () => ({
+    objects: Object.fromEntries(objGroups),
+    edit: Object.fromEntries([...editGroups].map(([k, g]) => [k, Object.fromEntries(g)])),
+  }),
+  setGroups: data => {
+    objGroups.clear(); editGroups.clear();
+    for (const [n, l] of Object.entries(data?.objects ?? {})) objGroups.set(n, l);
+    for (const [k, g] of Object.entries(data?.edit ?? {})) editGroups.set(k, new Map(Object.entries(g)));
+    refreshGroupList(true);
+  },
+});
 
 function clearAll() { if (mode === 'edit') setMode('select'); select(null); while (boxes.length) disposeMesh(boxes.pop()); }
 $('clear').onclick = () => { if (!boxes.length || confirm('Delete all objects?')) { clearAll(); commit(); } };
