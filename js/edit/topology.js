@@ -46,7 +46,6 @@ export class TopologyMethods {
     this.changed = true;
     this.disposeOverlays();
     this.buildOverlays();
-    this.vertPoints.visible = this.kind !== 'face';
     this.selV.clear(); this.selE.clear(); this.selF.clear();
     return used;
   }
