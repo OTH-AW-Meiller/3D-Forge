@@ -241,7 +241,7 @@ function updateSelFrame() {
   if (!show) return;
   selFrame.box.copy(selectionBox()).expandByScalar(0.02);
 }
-let alignPivot = false, xformPivot = false;
+let xformPivot = false;
 const pivotProxy = new THREE.Object3D();
 scene.add(pivotProxy);
 function attachGizmo() {
@@ -426,8 +426,8 @@ function updateToolbar() {
   $('secSelTool').hidden = !(tool === 'select' && (mode === 'select' || mode === 'edit'));
   refreshGroupList();
   if (xformPivot && (selection.length !== 1 || editing)) { xformPivot = false; $('xformPivot').classList.remove('active'); }
-  if (!editing && alignPivot) setAlignPivot(false);
   $('pivotEditRow').hidden = !editing;
+  $('alignPivot').disabled = !editing || editor.selV.size + editor.selE.size + editor.selF.size !== 1;
   $('pivotObjRow').hidden = editing;
   $('xformPivot').disabled = selection.length !== 1;
   $('selLoopRow').hidden = !(editing && editor.kind === 'edge');
@@ -524,12 +524,10 @@ function renameGroups(from, to) {
   for (const [k, v] of [...editGroups]) if (k.startsWith(from + '|')) { editGroups.delete(k); editGroups.set(to + k.slice(from.length), v); }
   for (const g of objGroups.values()) g.forEach((n, i) => { if (n === from) g[i] = to; });
 }
-function setAlignPivot(on) {
-  alignPivot = on && mode === 'edit';
-  $('alignPivot').classList.toggle('active', alignPivot);
-  if (alignPivot) $('status').textContent = 'Align pivot: click a vertex / edge / face';
-}
-$('alignPivot').onclick = () => setAlignPivot(!alignPivot);
+$('alignPivot').onclick = () => {
+  if (!editor.active || editor.selV.size + editor.selE.size + editor.selF.size !== 1) return;
+  if (editor.alignPivotToSelection()) { commit(); $('status').textContent = 'Pivot aligned'; }
+};
 
 // Object mode: the gizmo works on a proxy; on release the pivot of the object follows and the shape stays in place
 function setXformPivot(on) {
@@ -1097,7 +1095,7 @@ const dom = renderer.domElement;
 const modHeld = e => e.shiftKey || e.ctrlKey || e.metaKey;
 const clickOp = e => (tool !== 'select' ? (modHeld(e) ? 'difference' : 'set') : selectOp === 'set' && modHeld(e) ? 'difference' : selectOp);
 const dragOp = e => (selectOp === 'set' && modHeld(e) ? 'extend' : selectOp);
-const canBoxSelect = () => tool === 'select' && !alignPivot && ((mode === 'edit' && !editor.addMode) || mode === 'select');
+const canBoxSelect = () => tool === 'select' && ((mode === 'edit' && !editor.addMode) || mode === 'select');
 dom.addEventListener('pointerdown', e => {
   down = { x: e.clientX, y: e.clientY, b: e.button, onGizmo: !!gizmo.axis && gizmo.visible && gizmo.enabled, box: e.button === 0 && canBoxSelect(), shape: selShape, path: [[e.clientX - dom.getBoundingClientRect().left, e.clientY - dom.getBoundingClientRect().top]] };
   if (down.box) dom.setPointerCapture(e.pointerId);
@@ -1174,10 +1172,7 @@ dom.addEventListener('pointerup', e => {
   const onGizmo = click.onGizmo;
   if (gizmo.dragging || onGizmo) return;
   if (mode === 'edit') {
-    if (alignPivot) {
-      editor.pick(e, 'set');
-      if (editor.alignPivotToSelection()) { commit(); setAlignPivot(false); $('status').textContent = 'Pivot aligned'; }
-    } else if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, clickOp(e));
+    if (editor.addMode) { editor.insertPoint(e); commit(); } else editor.pick(e, clickOp(e));
   } else if (mode === 'poly') {
     polyClick(e);
   } else if (mode === 'place') {
