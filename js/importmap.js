@@ -1,12 +1,13 @@
 // Use a local three.js from lib/three/ if present, otherwise the CDN
 (function () {
-  var local = 'lib/three/';
+  var local = new URL('lib/three/', document.baseURI).href;
   var ok = false;
   try {
     var x = new XMLHttpRequest();
-    x.open('HEAD', local + 'build/three.module.js', false);
+    x.open('GET', local + 'build/three.module.js', false);
+    x.overrideMimeType('text/plain');
     x.send();
-    ok = x.status === 200;
+    ok = x.status === 200 && x.responseText.indexOf('REVISION') >= 0;
   } catch (e) {}
   var cdn = 'https://cdn.jsdelivr.net/npm/three@0.160.0/';
   var base = ok ? local : cdn;
