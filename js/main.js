@@ -251,7 +251,8 @@ const latticeProxy = new THREE.Object3D();
 scene.add(latticeProxy);
 scene.add(pivotProxy);
 function attachGizmo() {
-  if (latticeOpen) {
+  if (selection.some(m => !isPickable(m))) gizmo.detach();
+  else if (latticeOpen) {
     if (latticeSel >= 0) {
       lattice.worldPoint(latticeSel, latticeProxy.position);
       latticeProxy.quaternion.identity();
@@ -284,8 +285,8 @@ gizmo.addEventListener('dragging-changed', e => {
 const isPickable = m => m.visible && !m.userData.locked;
 
 // additive = toggle the object in the current selection
-function select(mesh, additive = false) {
-  if (mesh && !isPickable(mesh)) mesh = null;
+function select(mesh, additive = false, fromList = false) {
+  if (mesh && !fromList && !isPickable(mesh)) mesh = null;
   selection.forEach(m => m.material.emissive.setHex(0x000000));
   if (additive && mesh) {
     const i = selection.indexOf(mesh);
@@ -300,9 +301,9 @@ function select(mesh, additive = false) {
 
 // Keeps the existing selection order (the first selected object matters for Bool)
 const keepOrder = set => [...selection.filter(o => set.has(o)), ...[...set].filter(o => !selection.includes(o))];
-function setSelectionList(list) {
+function setSelectionList(list, keepAll = false) {
   selection.forEach(m => m.material.emissive.setHex(0x000000));
-  selection = list.filter(isPickable);
+  selection = keepAll ? list.slice() : list.filter(isPickable);
   selected = selection[selection.length - 1] ?? null;
   selection.forEach(m => m.material.emissive.setHex(0x222222));
   attachGizmo();
@@ -330,7 +331,7 @@ function applySnapToSelection() {
 let pivotBeforeEdit = null;
 let selectionBeforePlace = [];
 function setMode(m) {
-  if (m === 'edit' && selection.length !== 1) return;
+  if (m === 'edit' && (selection.length !== 1 || !isPickable(selection[0]))) return;
   if (mode === 'edit' && m !== 'edit') {
     editor.exit();
     if (shading === 'edges') boxes.forEach(applyShading);
@@ -526,7 +527,7 @@ $('selGroupApply').onclick = () => {
     const hits = new Set(boxes.filter(b => g.includes(b.userData.name)));
     const cur = new Set(selection);
     applySelectOp(cur, hits, selectOp);
-    setSelectionList(keepOrder(cur));
+    setSelectionList(keepOrder(cur), true);
   }
 };
 $('selGroupList').onchange = () => $('selGroupApply').click();
@@ -1527,7 +1528,29 @@ function toggleFlag(m, key) {
   if (!isPickable(m) && selection.includes(m)) select(m, true);
   commit();
 }
+// Header buttons act on the whole selection: if any selected object is visible/unlocked they hide/lock all, otherwise they show/unlock all
+function toggleSelectionFlag(key) {
+  if (mode === 'edit' || !selection.length) return;
+  const val = selection.some(m => !m.userData[key]);
+  selection.slice().forEach(m => { m.userData[key] = val; m.visible = !m.userData.hidden; });
+  setSelectionList(selection, true);
+  commit();
+}
+function syncHeadBtns() {
+  [['selHide', 'hidden', ['eye', 'eye-off'], 'Hide / show selected objects'], ['selLock', 'locked', ['unlock', 'lock'], 'Lock / unlock selected objects']].forEach(([id, key, icons, title]) => {
+    const b = $(id);
+    const allOn = selection.length > 0 && selection.every(m => m.userData[key]);
+    b.disabled = mode === 'edit' || !selection.length;
+    b.classList.toggle('on', allOn);
+    b.title = title;
+    const html = `<span class="ico" style="--icon:url(../icons/${icons[allOn ? 1 : 0]}.svg)"></span>`;
+    if (b.dataset.html !== html) { b.dataset.html = html; b.innerHTML = html; }
+  });
+}
+$('selHide').onclick = () => toggleSelectionFlag('hidden');
+$('selLock').onclick = () => toggleSelectionFlag('locked');
 function syncList() {
+  syncHeadBtns();
   const key = boxes.map(b => b.userData.name + (b.userData.hidden ? '|h' : '') + (b.userData.locked ? '|l' : '')).join('\n');
   if (key === listKey && listEl.children.length === boxes.length) {
     boxes.forEach((b, i) => listEl.children[i].classList.toggle('sel', selection.includes(b)));
@@ -1546,7 +1569,7 @@ function syncList() {
     inp.spellcheck = false;
     inp.title = 'Click to select, double-click to rename';
     inp.readOnly = true;
-    row.onclick = e => { if (mode === 'edit') return; if (mode === 'place') setMode('select'); select(m, e.shiftKey || e.ctrlKey || e.metaKey); };
+    row.onclick = e => { if (mode === 'edit') return; if (mode === 'place') setMode('select'); select(m, e.shiftKey || e.ctrlKey || e.metaKey, true); };
     inp.ondblclick = () => { inp.readOnly = false; inp.focus(); inp.select(); };
     inp.onkeydown = e => {
       if (e.key === 'Enter') inp.blur();
