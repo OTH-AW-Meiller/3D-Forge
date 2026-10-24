@@ -1,0 +1,15 @@
+{
+  "name": "3dforge",
+  "private": true,
+  "version": "0.5.0",
+  "description": "Optional tooling to build the 3DForge macOS app with Tauri. Not needed to run the web version.",
+  "scripts": {
+    "app:prepare": "node scripts/prepare-app.js",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build",
+    "app:build:signed": "sh scripts/build-signed.sh"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

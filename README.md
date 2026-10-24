@@ -14,6 +14,20 @@ python3 -m http.server 8765
 
 Then open <http://localhost:8765/index.html>. An internet connection is required for the three.js CDN.
 
+## macOS app (optional, Tauri)
+
+The web version needs none of this. To build a native macOS app (requires Node.js and [Rust](https://rustup.rs)):
+
+```sh
+npm install
+npm run app:dev     # run as desktop app
+npm run app:build   # .app and .dmg in src-tauri/target/release/bundle/
+```
+
+Signing (optional): copy `.env.signing.example` to `.env.signing` (git-ignored), enter your Developer ID identity (and Apple ID, app-specific password and team ID for notarization), then run `npm run app:build:signed`. Secrets are only read from that ignored file or the environment and never stored in tracked files.
+
+Put three.js into `lib/three/` first (see `lib/README.txt`), otherwise the app loads it from the CDN and needs internet. In the app, exports use a native save dialog.
+
 ## Features
 
 ### Scene & navigation

@@ -153,13 +153,16 @@ export function setupIO({ boxes, addBox, applyColors, clearAll, commit, baseHex,
       ...(m.userData.model?.faceColors.size && { faceColors: [...m.userData.model.faceColors] })
     }));
     const data = { format: 'scene', objects, selectionGroups: getGroups() };
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    a.download = 'szene.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'szene.json');
   };
-  function download(blob, name) {
+  // In the Tauri desktop app a native save dialog is used (WebView downloads are unreliable); in the browser a normal download
+  async function download(blob, name) {
+    const tauri = window.__TAURI__;
+    if (tauri?.dialog && tauri?.fs) {
+      const path = await tauri.dialog.save({ defaultPath: name });
+      if (path) await tauri.fs.writeFile(path, new Uint8Array(await blob.arrayBuffer()));
+      return;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = name;
