@@ -11,15 +11,15 @@
 <div id="splash" hidden>
   <div class="card">
     <img class="logo" src="icons/logo.svg" alt="">
-    <h1>3DForge</h1>
-    <p>Mesh Modeller</p>
-    <p class="ver">Version 0.5</p>
+    <h1 data-app="name">3DForge</h1>
+    <p data-app="subtitle">Mesh Modeller</p>
+    <p class="ver" data-app="full-version">Version 0.5</p>
     <div class="go">Click to start</div>
-    <div class="copy">&copy; 2026 by Dieter Meiller</div>
+    <div class="copy" data-app="copyright">&copy; 2026 by Dieter Meiller</div>
   </div>
 </div>
 <div id="menubar">
-  <button id="logoBtn" title="About 3DForge"><img src="icons/logo.svg" alt=""><span>3DForge</span><small style="opacity:.55;margin-left:6px;font-size:11px">v0.5</small></button>
+  <button id="logoBtn" title="About 3DForge"><img src="icons/logo.svg" alt=""><span data-app="name">3DForge</span><small data-app="short-version" style="opacity:.55;margin-left:6px;font-size:11px">v0.5</small></button>
   <div class="menu" id="mFile">
     <button>File</button>
     <div class="dropdown">
@@ -289,6 +289,7 @@
   <p class="hint">Ctrl also means Cmd on macOS. Hover over any button to see its shortcut. Other import/export formats (OBJ, STL, GLB, 3DS) are reachable via the File menu only.</p>
   <button data-close>Close</button>
 </dialog>
+<script type="module" src="js/appinfo.js"></script>
 <script type="module" src="js/splash.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
