@@ -1,0 +1,3 @@
+# External libraries (optional local three.js, see lib/README.txt)
+/lib/*
+!/lib/README.txt
