@@ -26,6 +26,16 @@ npm run app:build   # .app and .dmg in src-tauri/target/release/bundle/
 
 Signing (optional): copy `.env.signing.example` to `.env.signing` (git-ignored), enter your Developer ID identity (and Apple ID, app-specific password and team ID for notarization), then run `npm run app:build:signed`. Secrets are only read from that ignored file or the environment and never stored in tracked files.
 
+Mac App Store (optional): in the Apple Developer portal create the App ID (`de.oth-aw.3dforge`, see `src-tauri/tauri.conf.json`), the certificates "Apple Distribution" / "3rd Party Mac Developer Application" and "Mac Installer Distribution" / "3rd Party Mac Developer Installer" (install them in the keychain), a Mac App Store provisioning profile for the App ID, and the app record in App Store Connect. Fill the `APPSTORE_*` values in `.env.signing`, then:
+
+```sh
+rustup target add x86_64-apple-darwin   # once, for the universal build
+npm run app:appstore                    # sandboxed, signed .pkg in src-tauri/gen/appstore/
+npm run app:appstore:upload             # upload to App Store Connect (or open the .pkg with Transporter)
+```
+
+Texts, screenshots, icon and privacy policy for the store entry are in `store/` (see `store/README.md`). Increase `APPSTORE_BUILD_NUMBER` for every upload. The sandbox entitlements are in `src-tauri/appstore/`.
+
 Put three.js into `lib/three/` first (see `lib/README.txt`), otherwise the app loads it from the CDN and needs internet. In the app, exports use a native save dialog.
 
 ## Features

@@ -7,7 +7,9 @@
     "app:prepare": "node scripts/prepare-app.js",
     "app:dev": "tauri dev",
     "app:build": "tauri build",
-    "app:build:signed": "sh scripts/build-signed.sh"
+    "app:build:signed": "sh scripts/build-signed.sh",
+    "app:appstore": "sh scripts/build-appstore.sh",
+    "app:appstore:upload": "sh scripts/upload-appstore.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
